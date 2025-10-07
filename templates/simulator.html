@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simulation Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Impact Classes */
+        /* Cost: Lower is Positive (Green), Higher is Negative (Red) */
+        .impact-positive { color: #198754; font-weight: bold; } /* Green */
+        .impact-negative { color: #dc3545; font-weight: bold; } /* Red */
+        /* For Costs, we need a reversed logic class for the total impact */
+        .cost-positive { color: #dc3545; font-weight: bold; } /* Cost Increase is Bad/Negative (Red) */
+        .cost-negative { color: #198754; font-weight: bold; } /* Cost Decrease is Good/Positive (Green) */
+
+
+        /* Custom Pan-Theme Styling */
+        body {
+            background-color: #f8f9fa; /* Light grey background */
+        }
+        .navbar-dark {
+            background-color: #343a40 !important; /* Dark Navbar */
+        }
+        .text-primary {
+            color: #007bff !important; /* Blue primary color */
+        }
+        .card {
+            border: 1px solid rgba(0, 0, 0, 0.125);
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .bg-light-pan {
+            background-color: #e9ecef !important; /* Slightly darker light background for emphasis */
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Supply Chain Decision Portal</span>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h2 class="mb-5 text-primary text-center">सिमुलेशन परिणाम: P&L, राजस्व और लागत (P&L, Revenue & Cost) प्रभाव</h2>
+
+        <div class="alert alert-info shadow-sm text-center">
+            <strong>परिदृश्य (Scenario):</strong> {{ results.Scenario }}
+        </div>
+
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <h3 class="mb-3 text-secondary border-bottom pb-2">लाभ और मार्जिन (Profit & Margin)</h3>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 shadow-sm h-100">
+                    <h5>वर्तमान शुद्ध लाभ (Current Net Profit)</h5>
+                    <h3 class="text-muted mt-2">{{ results['Current Net Profit'] }}</h3>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 shadow-sm h-100">
+                    <h5>सिम्युलेटेड शुद्ध लाभ (Simulated Net Profit)</h5>
+                    <h3 class="{% if results.Impact < 0 %}impact-negative{% else %}impact-positive{% endif %} mt-2">{{ results['Simulated Net Profit'] }}</h3>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 h-100">
+                    <h5>वर्तमान शुद्ध मार्जिन (Current Net Margin)</h5>
+                    <p class="h4 mt-2">{{ results['Current Net Margin'] }}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 h-100">
+                    <h5>सिम्युलेटेड शुद्ध मार्जिन (Simulated Net Margin)</h5>
+                    <p class="h4 mt-2">{{ results['Simulated Net Margin'] }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <h3 class="mb-3 text-secondary border-bottom pb-2">कर्मचारी लागत (Employee Cost) 👥</h3>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 shadow-sm h-100 bg-light-pan">
+                    <h5>वर्तमान कर्मचारी लागत (Current Employee Cost)</h5>
+                    <h3 class="text-dark mt-2">{{ results['Current Employee Cost'] }}</h3>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 shadow-sm h-100 bg-light-pan">
+                    <h5>सिम्युलेटेड कर्मचारी लागत (Simulated Employee Cost)</h5>
+                    <h3 class="{% if results['Employee Cost Impact'] > 0 %}cost-positive{% else %}cost-negative{% endif %} mt-2">
+                        {{ results['Simulated Employee Cost'] }}
+                    </h3>
+                </div>
+            </div>
+
+            <div class="col-md-12 mt-3">
+                 <div class="card p-4 bg-white shadow-lg border-secondary">
+                    <h4 class="text-center text-secondary mb-3">कर्मचारी लागत में कुल बदलाव</h4>
+                    <h1 class="text-center {% if results['Employee Cost Impact'] > 0 %}cost-positive{% else %}cost-negative{% endif %} display-4">
+                        {% if results['Employee Cost Impact'] > 0 %}+{% elif results['Employee Cost Impact'] < 0 %}-{% endif %} ₹{{ "{:,.0f}".format(results['Employee Cost Impact'] | abs) }}
+                    </h1>
+                    <p class="text-center text-muted mt-2">यह सिमुलेशन के परिणामस्वरूप **कर्मचारी लागत** में आया बदलाव है। (कमी हरित है)</p>
+                </div>
+            </div>
+        </div>
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <h3 class="mb-3 text-secondary border-bottom pb-2">राजस्व (Revenue) 📈</h3>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 shadow-sm h-100 bg-light-pan">
+                    <h5>वर्तमान राजस्व (Current Revenue)</h5>
+                    <h3 class="text-dark mt-2">{{ results['Current Revenue'] }}</h3>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card p-4 shadow-sm h-100 bg-light-pan">
+                    <h5>सिम्युलेटेड राजस्व (Simulated Revenue)</h5>
+                    <h3 class="{% if results['Revenue Impact'] < 0 %}impact-negative{% else %}impact-positive{% endif %} mt-2">
+                        {{ results['Simulated Revenue'] }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="card p-5 bg-white shadow-lg border-primary mb-5">
+            <h4 class="text-center text-primary mb-3">कुल शुद्ध लाभ पर प्रभाव (Total Net Profit Impact) 💰</h4>
+            <h1 class="text-center {% if results.Impact < 0 %}impact-negative{% else %}impact-positive{% endif %} display-3">
+                {% if results.Impact < 0 %}-{% elif results.Impact > 0 %}+{% endif %} ₹{{ "{:,.0f}".format(results.Impact | abs) }}
+            </h1>
+            <p class="text-center text-muted mt-3">यह सिमुलेशन के परिणामस्वरूप **शुद्ध लाभ** में आया अंतिम बदलाव है।</p>
+        </div>
+
+        <div class="mt-5 text-center pb-4">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg shadow-sm">डैशबोर्ड पर वापस जाएँ (Go Back to Dashboard)</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

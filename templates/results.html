@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulation Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Modern, subtle background */
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background-color: #f7f9fb; /* Light background for contrast */
+        }
+        .nav-bar { background-color: #111827; } /* Darker for professional look */
+
+        .result-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-left: 6px solid;
+            border-radius: 0.75rem;
+            background-color: white;
+        }
+
+        /* Impact Colors (Used on main card and data points) */
+        .impact-positive { border-color: #10b981; } /* Emerald-500 (Good) */
+        .impact-negative { border-color: #ef4444; } /* Red-500 (Bad) */
+        .impact-neutral { border-color: #64748b; } /* Slate-500 (Neutral) */
+
+        .text-impact-positive { color: #10b981; }
+        .text-impact-negative { color: #ef4444; }
+        .text-impact-neutral { color: #64748b; }
+
+        .kpi-margin { border-color: #3b82f6; } /* Blue for Margin */
+        .kpi-revenue { border-color: #f59e0b; } /* Amber for Revenue */
+        .kpi-cost { border-color: #14b8a6; }    /* Teal for Cost */
+    </style>
+</head>
+<body>
+    <nav class="nav-bar shadow-xl sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <span class="text-white text-2xl font-extrabold tracking-wider">Simulation Impact Analysis</span>
+                </div>
+                <a href="{{ url_for('index') }}" class="px-5 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition duration-150">
+                    ← Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <h1 class="text-4xl font-extrabold text-gray-800 mb-2">P&L Simulation Results</h1>
+        <p class="text-lg text-gray-600 mb-8 border-b pb-4">Scenario: <span class="font-semibold text-indigo-700">{{ results.Scenario }}</span></p>
+
+        <div class="bg-white p-8 rounded-xl shadow-2xl mb-10 border-t-8
+            {% if results.Impact > 0 %} impact-positive {% elif results.Impact < 0 %} impact-negative {% else %} impact-neutral {% endif %}">
+
+            <p class="text-xl font-semibold text-gray-500 mb-2">Total Net Profit Impact (Per Day Basis)</p>
+
+            <div class="flex items-center justify-between">
+                <h2 class="text-6xl font-extrabold
+                    {% if results.Impact > 0 %} text-impact-positive {% elif results.Impact < 0 %} text-impact-negative {% else %} text-impact-neutral {% endif %}">
+                    {% if results.Impact > 0 %}+{% endif %}₹{{ "{:,.0f}".format(results.Impact | abs) }}
+                </h2>
+                <div class="text-right">
+                    <p class="text-lg font-medium text-gray-700">Current Profit: <span class="font-semibold">{{ results['Current Net Profit'] }}</span></p>
+                    <p class="text-3xl font-bold text-indigo-700 mt-1">Simulated Profit: {{ results['Simulated Net Profit'] }}</p>
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-500 mt-4">
+                *The base for this simulation is the most recent daily P&L data entered.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <div class="result-card p-6 kpi-margin">
+                <h3 class="text-xl font-bold text-blue-700 mb-3">Net Margin (%)</h3>
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500">Current</p>
+                        <p class="text-2xl font-semibold text-gray-800">{{ results['Current Net Margin'] }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Simulated</p>
+                        <p class="text-3xl font-extrabold text-blue-900">{{ results['Simulated Net Margin'] }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-card p-6 kpi-revenue">
+                <h3 class="text-xl font-bold text-amber-700 mb-3">Revenue Impact</h3>
+                <p class="text-sm text-gray-500">Simulated Revenue: <span class="font-semibold">{{ results['Simulated Revenue'] }}</span></p>
+                <p class="text-3xl font-extrabold mt-2
+                    {% if results['Revenue Impact'] > 0 %} text-impact-positive {% elif results['Revenue Impact'] < 0 %} text-impact-negative {% else %} text-impact-neutral {% endif %}">
+                    {% if results['Revenue Impact'] > 0 %}+{% endif %}₹{{ "{:,.0f}".format(results['Revenue Impact'] | abs) }}
+                </p>
+            </div>
+
+            <div class="result-card p-6 kpi-cost">
+                <h3 class="text-xl font-bold text-teal-700 mb-3">Labor Cost Impact</h3>
+                <p class="text-sm text-gray-500">Simulated Cost: <span class="font-semibold">{{ results['Simulated Employee Cost'] }}</span></p>
+                <p class="text-3xl font-extrabold mt-2
+                    {% if results['Employee Cost Impact'] < 0 %} text-impact-positive {% elif results['Employee Cost Impact'] > 0 %} text-impact-negative {% else %} text-impact-neutral {% endif %}">
+                    {% if results['Employee Cost Impact'] > 0 %}+{% endif %}₹{{ "{:,.0f}".format(results['Employee Cost Impact'] | abs) }}
+                </p>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

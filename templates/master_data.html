@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Data Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* --- Company Theme Definitions --- */
+        :root {
+            --company-theme-red: #c23a1b; /* New Company Red Color */
+            --dark-bg: #212529; /* Dark/Black for Navbar */
+            --light-hover: #fff0f0; /* Very light red for table hover */
+            --text-red-accent: var(--company-theme-red);
+            --base-bg-color: #f8f9fa;
+        }
+
+        /* --- NEURAL NETWORK BACKGROUND ANIMATION --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--base-bg-color);
+            position: relative;
+            min-height: 100vh;
+            z-index: 1;
+        }
+
+        /* Container for the effect */
+        .neural-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            background-color: var(--base-bg-color);
+        }
+
+        /* Base Node Style */
+        .node {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: rgba(194, 58, 27, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(194, 58, 27, 0.8);
+            animation: moveNode 15s linear infinite alternate;
+            opacity: 0.5;
+        }
+
+        /* Defining the motion for the nodes */
+        @keyframes moveNode {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(calc(100vw - 100%), calc(100vh - 100%)) scale(1.1); }
+        }
+
+        /* Specific Node Position and Delay */
+        .node:nth-child(1) { top: 10%; left: 20%; animation-duration: 12s; }
+        .node:nth-child(2) { top: 70%; left: 80%; animation-duration: 18s; }
+        .node:nth-child(3) { top: 30%; left: 50%; animation-duration: 14s; }
+        .node:nth-child(4) { top: 90%; left: 10%; animation-duration: 20s; }
+        .node:nth-child(5) { top: 50%; left: 90%; animation-duration: 16s; }
+        .node:nth-child(6) { top: 5%; left: 85%; animation-duration: 10s; }
+        .node:nth-child(7) { top: 85%; left: 40%; animation-duration: 22s; }
+        .node:nth-child(8) { top: 40%; left: 5%; animation-duration: 17s; }
+
+        /* Content Styling */
+        .container {
+            position: relative;
+            z-index: 2;
+        }
+        /* --- END NEURAL NETWORK BACKGROUND ANIMATION --- */
+
+        /* Custom Styling for a Professional Red Look (Theme Unchanged) */
+        .navbar-dark { background-color: var(--dark-bg) !important; }
+        .navbar-brand { font-weight: 700; }
+        .nav-tabs .nav-link { color: #495057; border: 1px solid transparent; padding: 1rem 1.25rem; }
+        .nav-tabs .nav-link.active { color: var(--company-theme-red); background-color: #ffffff; border-color: var(--company-theme-red) var(--company-theme-red) #ffffff; font-weight: 600; box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05); }
+        .tab-content { background-color: #ffffff; border: 1px solid #dee2e6; border-top: none; padding: 30px; border-radius: 0 0 .75rem .75rem; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); }
+        .table-hover tbody tr:hover { background-color: var(--light-hover); }
+        .form-container {
+            border: 1px solid #e9ecef;
+            border-radius: .75rem;
+            background-color: #fefefe;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .text-red-accent { color: var(--company-theme-red) !important; }
+        .btn-primary, .btn-danger { background-color: var(--company-theme-red); border-color: var(--company-theme-red); }
+        .btn-primary:hover, .btn-danger:hover { background-color: #a33116; border-color: #a33116; }
+        .btn-outline-light { border-color: var(--company-theme-red) !important; color: var(--company-theme-red) !important; }
+        .btn-sm.btn-outline-danger { color: var(--company-theme-red) !important; border-color: var(--company-theme-red) !important; }
+        .btn-sm.btn-outline-danger:hover { background-color: var(--company-theme-red) !important; color: white !important; }
+    </style>
+</head>
+<body>
+
+    <div class="neural-background">
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+        <div class="node"></div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid container-xl">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Supply Chain Decision Portal</a>
+            <a class="btn btn-outline-light" href="{{ url_for('index') }}">Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="container container-xl mt-5">
+        <h2 class="mb-2 text-red-accent">Comprehensive Master Data Management 🛠️</h2>
+        <p class="lead lead-description mb-5">Here you can define and update all **Labor, Fixed Cost, Revenue, and Consumable Rates** essential for P&L analysis.</p>
+
+        <ul class="nav nav-tabs" id="masterDataTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="roles-tab" data-bs-toggle="tab" data-bs-target="#roles" type="button" role="tab" aria-controls="roles" aria-selected="true">1. Role Rates (Attendance Based)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="employees-tab" data-bs-toggle="tab" data-bs-target="#employees" type="button" role="tab" aria-controls="employees" aria-selected="false">2. Specific Employees (White Collar)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="fixed-tab" data-bs-toggle="tab" data-bs-target="#fixed" type="button" role="tab" aria-controls="fixed" aria-selected="false">3. Fixed & Other Costs</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="rates-tab" data-bs-toggle="tab" data-bs-target="#rates" type="button" role="tab" aria-controls="rates" aria-selected="false">4. Revenue, Consumables & Adhoc Rates</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="masterDataTabsContent">
+
+            <div class="tab-pane fade show active" id="roles" role="tabpanel" aria-labelledby="roles-tab">
+                <h4 class="mb-4 text-red-accent">Attendance Based Associate Roles (e.g., Blue Collar)</h4>
+                <div class="table-responsive mb-4 shadow-sm">
+                    <table class="table table-bordered table-sm table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Role Name</th>
+                                <th>Monthly Salary (₹)</th>
+                                <th>Daily Cost (₹) (Auto)</th>
+                                <th>Description</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role, data in master_data.ROLE_RATES.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ role }}</td>
+                                <td>{{ "{:,.0f}".format(data.monthly_salary) }}</td>
+                                <td>{{ "{:,.2f}".format(data.daily_cost) }}</td>
+                                <td>{{ data.description }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                        <input type="hidden" name="category" value="role_rates">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="role_name" value="{{ role }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete this role">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mt-4 text-primary">Update Existing Role Details (Salary, Description)</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                    <input type="hidden" name="category" value="role_rates">
+                    <input type="hidden" name="action" value="update_existing">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Select Role Name</label>
+                            <select class="form-select" name="role_name_to_update" required>
+                                <option value="" disabled selected>Select an existing role...</option>
+                                {% for item in master_data.ROLE_RATES.keys() %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3"><label class="form-label">New Monthly Salary (₹)</label><input type="number" step="1" min="1" class="form-control" name="monthly_salary" required placeholder="e.g., 25000"></div>
+                        <div class="col-md-4"><label class="form-label">New Description</label><input type="text" class="form-control" name="description" required placeholder="Key Responsibilities"></div>
+                        <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100">Update Role</button></div>
+                    </div>
+                </form>
+
+                <h6 class="mt-4 text-danger">Add New Role</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container">
+                    <input type="hidden" name="category" value="role_rates">
+                    <input type="hidden" name="action" value="add_new">
+                    <div class="row g-3">
+                        <div class="col-md-3"><label class="form-label">New Role Name</label><input type="text" class="form-control" name="new_role_name" required placeholder="e.g., New Picker"></div>
+                        <div class="col-md-3"><label class="form-label">Monthly Salary (₹)</label><input type="number" step="1" min="1" class="form-control" name="monthly_salary" required placeholder="e.g., 25000"></div>
+                        <div class="col-md-4"><label class="form-label">Description</label><input type="text" class="form-control" name="description" required placeholder="Key Responsibilities"></div>
+                        <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-danger w-100">Add New Role</button></div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-pane fade" id="employees" role="tabpanel" aria-labelledby="employees-tab">
+                <h4 class="mb-4 text-red-accent">White Collar / Supervisor Salaries (Employee-Specific)</h4>
+                <div class="table-responsive mb-4 shadow-sm">
+                    <table class="table table-bordered table-sm table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>EMP Code</th>
+                                <th>Employee Name</th>
+                                <th>Role</th>
+                                <th>Base Salary (₹)</th>
+                                <th>**Monthly Rating (Out of 5) 🌟**</th>
+                                <th>**Adjusted Monthly Salary (₹)**</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for code, data in master_data.EMPLOYEE_SALARIES.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ code }}</td>
+                                <td>{{ data.name }}</td>
+                                <td>{{ data.role }}</td>
+                                <td>₹{{ "{:,.0f}".format(data.base_salary) }}</td>
+                                <td class="text-center fw-bold text-red-accent">{{ "{:,.1f}".format(data.monthly_rating) }}</td>
+                                <td class="fw-bold">₹{{ "{:,.0f}".format(data.adjusted_salary) }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                        <input type="hidden" name="category" value="employee_salaries">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="emp_code" value="{{ code }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete this employee">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h5 class="mt-4 text-red-accent">Update Employee Monthly Rating (0.0 to 5.0)</h5>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-5">
+                    <input type="hidden" name="category" value="employee_salaries">
+                    <input type="hidden" name="action" value="update_rating">
+                    <div class="row g-3">
+                        <div class="col-md-3"><label class="form-label">EMP Code</label><input type="text" class="form-control" name="emp_code_rating" required placeholder="e.g., F00000999"></div>
+                        <div class="col-md-3"><label class="form-label">New Monthly Rating (0.0 - 5.0)</label><input type="number" step="0.1" min="0" max="5" class="form-control" name="monthly_rating" required placeholder="e.g., 4.5"></div>
+                        <div class="col-md-3 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100">Update Rating</button></div>
+                    </div>
+                </form>
+
+                <h5 class="mt-5 text-red-accent">Add/Update Employee Details (Base Salary)</h5>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container">
+                    <input type="hidden" name="category" value="employee_salaries">
+                    <input type="hidden" name="action" value="add_or_update">
+                    <div class="row g-3">
+                        <div class="col-md-3"><label class="form-label">EMP Code</label><input type="text" class="form-control" name="emp_code" required placeholder="e.g., F00000999"></div>
+                        <div class="col-md-3"><label class="form-label">Employee Name</label><input type="text" class="form-control" name="name" required placeholder="e.g., John Doe"></div>
+                        <div class="col-md-2"><label class="form-label">Role</label><input type="text" class="form-control" name="role" required placeholder="e.g., Team Lead"></div>
+
+                        <div class="col-md-2"><label class="form-label">Base Salary (₹)</label><input type="number" step="1" min="1" class="form-control" name="base_salary" required placeholder="e.g., 35000"></div>
+
+                        <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-danger w-100">Add/Update Employee</button></div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-pane fade" id="fixed" role="tabpanel" aria-labelledby="fixed-tab">
+                <h4 class="mb-4 text-red-accent">Monthly Fixed Costs (Rental, Security, Utilities, etc.)</h4>
+                <div class="table-responsive mb-4 shadow-sm">
+                    <table class="table table-bordered table-sm table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cost Item</th>
+                                <th>Monthly Amount (₹)</th>
+                                <th>Daily Equivalent (₹) (Auto)</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item, cost in master_data.FIXED_COSTS.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ item }}</td>
+                                <td>₹{{ "{:,.0f}".format(cost) }}</td>
+                                <td>₹{{ "{:,.2f}".format(cost / 30) }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                        <input type="hidden" name="category" value="fixed_costs">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="cost_name" value="{{ item }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete this cost item">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mt-4 text-primary">Update Existing Fixed Cost (Select Name from Dropdown)</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                    <input type="hidden" name="category" value="fixed_costs">
+                    <input type="hidden" name="action" value="update_existing">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Select Cost Name</label>
+                            <select class="form-select" name="cost_name_to_update" required>
+                                <option value="" disabled selected>Select an existing cost...</option>
+                                {% for item in master_data.FIXED_COSTS.keys() %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5"><label class="form-label">New Monthly Amount (₹)</label><input type="number" step="1" min="0" class="form-control" name="cost_value" required placeholder="e.g., 150000"></div>
+                        <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100">Update Cost</button></div>
+                    </div>
+                </form>
+
+                <h6 class="mt-4 text-danger">Add New Fixed Cost</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container">
+                    <input type="hidden" name="category" value="fixed_costs">
+                    <input type="hidden" name="action" value="add_new">
+                    <div class="row g-3">
+                        <div class="col-md-5"><label class="form-label">New Cost Name</label><input type="text" class="form-control" name="new_cost_name" required placeholder="e.g., New Audit Fees"></div>
+                        <div class="col-md-5"><label class="form-label">Monthly Amount (₹)</label><input type="number" step="1" min="0" class="form-control" name="cost_value" required placeholder="e.g., 50000"></div>
+                        <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-danger w-100">Add New Cost</button></div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="tab-pane fade" id="rates" role="tabpanel" aria-labelledby="rates-tab">
+
+                <h5 class="mt-2 text-success">Revenue Rates (CBM, Storage, etc.)</h5>
+                <div class="table-responsive mb-4 shadow-sm">
+                    <table class="table table-bordered table-sm table-hover align-middle">
+                        <thead class="table-success">
+                            <tr><th>Rate Name</th><th>Rate Value (₹)</th><th class="text-center">Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item, rate in master_data.REVENUE_RATES.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ item }}</td>
+                                <td>₹{{ "{:,.2f}".format(rate) }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                        <input type="hidden" name="category" value="revenue_rates">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="rate_name" value="{{ item }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mt-4 text-primary">Update Existing Revenue Rate (Select Name from Dropdown)</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                    <input type="hidden" name="category" value="revenue_rates">
+                    <input type="hidden" name="action" value="update_existing">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Select Rate Name</label>
+                            <select class="form-select" name="rate_name_to_update" required>
+                                <option value="" disabled selected>Select an existing rate...</option>
+                                {% for item in master_data.REVENUE_RATES.keys() %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">New Rate Value (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="rate_value" required placeholder="e.g., 86.50">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Update Selected Rate</button>
+                        </div>
+                    </div>
+                </form>
+
+                <h6 class="mt-4 text-success">Add New Revenue Rate (New Name)</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-5">
+                    <input type="hidden" name="category" value="revenue_rates">
+                    <input type="hidden" name="action" value="add_new">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">New Rate Name</label>
+                            <input type="text" class="form-control" name="new_rate_name" required placeholder="e.g., Handling/Box Rate">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Rate Value (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="rate_value" required placeholder="e.g., 2.50">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success w-100">Add New Rate</button>
+                        </div>
+                    </div>
+                </form>
+
+                <h5 class="mt-4 text-info">Consumable Rates (Per Unit Cost)</h5>
+                <div class="table-responsive mb-4 shadow-sm">
+                    <table class="table table-bordered table-sm table-hover align-middle">
+                        <thead class="table-info">
+                            <tr><th>Item Name</th><th>Unit Cost (₹)</th><th class="text-center">Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item, rate in master_data.CONSUMABLE_RATES.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ item }}</td>
+                                <td>₹{{ "{:,.2f}".format(rate) }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                        <input type="hidden" name="category" value="consumable_rates">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="item_name" value="{{ item }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mt-4 text-primary">Update Existing Consumable Rate (Select Name from Dropdown)</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                    <input type="hidden" name="category" value="consumable_rates">
+                    <input type="hidden" name="action" value="update_existing">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Select Item Name</label>
+                            <select class="form-select" name="item_name_to_update" required>
+                                <option value="" disabled selected>Select an existing item...</option>
+                                {% for item in master_data.CONSUMABLE_RATES.keys() %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">New Unit Cost (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="rate_value" required placeholder="e.g., 0.25">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary text-white w-100">Update Selected Rate</button>
+                        </div>
+                    </div>
+                </form>
+
+                <h6 class="mt-4 text-info">Add New Consumable Rate</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-5">
+                    <input type="hidden" name="category" value="consumable_rates">
+                    <input type="hidden" name="action" value="add_new">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">New Item Name</label><input type="text" class="form-control" name="new_item_name" required placeholder="e.g., New Polybag Type"></div>
+                        <div class="col-md-4"><label class="form-label">Unit Cost (₹)</label><input type="number" step="0.01" min="0" class="form-control" name="rate_value" required placeholder="e.g., 0.25"></div>
+                        <div class="col-md-4 d-flex align-items-end"><button type="submit" class="btn btn-info text-white w-100">Add New Rate</button></div>
+                    </div>
+                </form>
+
+                <h5 class="mt-4 text-warning">Adhoc Rates (Hourly OT, Specialized Charges)</h5>
+                <div class="table-responsive mb-4 shadow-sm">
+                    <table class="table table-bordered table-sm table-hover align-middle">
+                        <thead class="table-warning">
+                            <tr><th>Cost Item</th><th>Hourly/Daily Cost (₹)</th><th class="text-center">Action</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item, rate in master_data.ADHOC_RATES.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ item }}</td>
+                                <td>₹{{ "{:,.2f}".format(rate) }}</td>
+                                <td class="text-center">
+                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                        <input type="hidden" name="category" value="adhoc_rates">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="rate_name" value="{{ item }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mt-4 text-primary">Update Existing Adhoc Rate (Select Name from Dropdown)</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                    <input type="hidden" name="category" value="adhoc_rates">
+                    <input type="hidden" name="action" value="update_existing">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Select Cost Item Name</label>
+                            <select class="form-select" name="rate_name_to_update" required>
+                                <option value="" disabled selected>Select an existing item...</option>
+                                {% for item in master_data.ADHOC_RATES.keys() %}
+                                <option value="{{ item }}">{{ item }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">New Cost Value (₹)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" name="rate_value" required placeholder="e.g., 120.50">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">Update Selected Rate</button>
+                        </div>
+                    </div>
+                </form>
+
+                <h6 class="mt-4 text-warning">Add New Adhoc Rate</h6>
+                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                    <input type="hidden" name="category" value="adhoc_rates">
+                    <input type="hidden" name="action" value="add_new">
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">New Cost Item Name</label><input type="text" class="form-control" name="new_rate_name" required placeholder="e.g., New Equipment Charge/Day"></div>
+                        <div class="col-md-4"><label class="form-label">Cost Value (₹)</label><input type="number" step="0.01" min="0" class="form-control" name="rate_value" required placeholder="e.g., 1000.00"></div>
+                        <div class="col-md-4 d-flex align-items-end"><button type="submit" class="btn btn-warning text-dark w-100">Add New Rate</button></div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
