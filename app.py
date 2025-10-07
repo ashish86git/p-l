@@ -199,6 +199,10 @@ with app.app_context():
 # --- CORE LOGIC & ROUTES ---
 # ====================================================================
 
+# ====================================================================
+# --- CORE LOGIC & ROUTES ---
+# ====================================================================
+
 def get_processed_data(preset=None, start_date=None, end_date=None):
     """Calculates P&L metrics based on fetched data."""
     global warehouse_data, MASTER_DATA
@@ -314,8 +318,8 @@ def get_processed_data(preset=None, start_date=None, end_date=None):
     summary = {}
 
     # Summary calculation should match the P&L calculation for consistency
-    summary['Revenue Storage/Day/CBM'] = (df['revenue_warehouse'].sum() * storage_rate)
     summary['Revenue Outbound/CBM'] = (df['revenue_freight'].sum() * outbound_rate)
+    summary['Revenue Storage/Day/CBM'] = (df['revenue_warehouse'].sum() * storage_rate)
 
     summary['White Colar'] = daily_white_collar_cost_fixed * len(df)
 
@@ -369,14 +373,22 @@ def get_processed_data(preset=None, start_date=None, end_date=None):
     total_net_profit = df['Net Profit'].sum()
     total_labor_cost = df['cost_associate'].sum()
 
+    # --- START OF CHANGE: Calculate Total Cost ---
+    total_cogs = df['Total COGS'].sum()
+    total_opex = df['Total OpEx'].sum()
+    # Total Cost = Total COGS + Total OpEx. This correctly includes all costs.
+    total_cost = total_cogs + total_opex
+
     kpis = {
         'total_revenue': total_revenue,
         'total_net_profit': total_net_profit,
         'avg_net_margin': round((total_net_profit / total_revenue) * 100, 2) if total_revenue else 0,
-        'labor_percentage': round((total_labor_cost / total_revenue) * 100, 2) if total_revenue else 0,
+        # 🎯 CHANGE: Use 'cost_percentage' based on total_cost instead of 'labor_percentage' based on total_labor_cost
+        'cost_percentage': round((total_cost / total_revenue) * 100, 2) if total_revenue else 0,
         'period_end_date': df.index[-1].strftime("%d-%b-%Y") if not df.empty else None,
         'cost_revenue_summary': {k: round(v, 0) for k, v in final_summary.items()}
     }
+    # --- END OF CHANGE ---
 
     return df, kpis, filter_info
 
@@ -406,14 +418,17 @@ def index():
                                active_start=start_date,
                                active_end=end_date)
 
+    # --- START OF CHANGE: Update KPI keys for display ---
     kpis_display = {
         'current_revenue': kpis_data['total_revenue'],
         'net_profit': kpis_data['total_net_profit'],
         'net_margin': kpis_data['avg_net_margin'],
-        'labor_percentage': kpis_data['labor_percentage'],
+        # 🎯 CHANGE: Using the new 'cost_percentage' key
+        'cost_percentage': kpis_data['cost_percentage'],
         'period_end_date': kpis_data['period_end_date'],
         'cost_revenue_summary': kpis_data.get('cost_revenue_summary')
     }
+    # --- END OF CHANGE ---
 
     display_cols = ['Revenue', 'cost_associate', 'Total COGS', 'Gross Profit', 'Total OpEx', 'Net Profit',
                     'Net Profit Margin (%)']
