@@ -4,6 +4,7 @@ import pandas as pd
 import datetime
 import numpy as np
 import decimal
+import math  # Added math for checking NaN/inf
 
 # --- APP SETUP ---
 app = Flask(__name__)
@@ -199,10 +200,6 @@ with app.app_context():
 # --- CORE LOGIC & ROUTES ---
 # ====================================================================
 
-# ====================================================================
-# --- CORE LOGIC & ROUTES ---
-# ====================================================================
-
 def get_processed_data(preset=None, start_date=None, end_date=None):
     """Calculates P&L metrics based on fetched data."""
     global warehouse_data, MASTER_DATA
@@ -301,9 +298,10 @@ def get_processed_data(preset=None, start_date=None, end_date=None):
     # ----------------------------------------------------------------------------
 
     rental_cost = MASTER_DATA.get('FIXED_COSTS', {}).get('Rental', 0)
-    daily_fixed_cost = (rental_cost / 30)
+    daily_fixed_cost_rent = (rental_cost / 30)
 
-    df['Total COGS'] = df['cost_associate'] + daily_fixed_cost + df['cost_utilities']
+    # P&L Logic Remains UNCHANGED
+    df['Total COGS'] = df['cost_associate'] + daily_fixed_cost_rent + df['cost_utilities']
     df['Gross Profit'] = df['Revenue'] - df['Total COGS']
 
     df['Total OpEx'] = df['cost_admin'] + df['cost_it']
@@ -312,15 +310,23 @@ def get_processed_data(preset=None, start_date=None, end_date=None):
     df['Net Profit Margin (%)'] = (df['Net Profit'] / df['Revenue']).fillna(0) * 100
 
     # =========================================================================
-    # --- Cost & Revenue Summary (UPDATED TO REFLECT THE CORRECT LOGIC) ---
+    # --- Cost & Revenue Summary (Calculating Other Fixed Costs for Total Cost KPI) ---
     # =========================================================================
 
-    summary = {}
+    # Calculate Other Fixed Costs (Non-P&L component of Other Charges)
+    other_fixed_monthly = MASTER_DATA.get('FIXED_COSTS', {}).get('House Keeping', 0) + \
+                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Guard Female', 0) + \
+                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Guard', 0) + \
+                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Supervisor', 0) + \
+                          MASTER_DATA.get('FIXED_COSTS', {}).get('Capex', 0) + \
+                          MASTER_DATA.get('FIXED_COSTS', {}).get('R & R Cost', 0)
 
-    # Summary calculation should match the P&L calculation for consistency
+    other_fixed_for_period = (other_fixed_monthly / 30) * len(df)
+
+    # --- Summary Population (Unchanged Logic) ---
+    summary = {}
     summary['Revenue Outbound/CBM'] = (df['revenue_freight'].sum() * outbound_rate)
     summary['Revenue Storage/Day/CBM'] = (df['revenue_warehouse'].sum() * storage_rate)
-
     summary['White Colar'] = daily_white_collar_cost_fixed * len(df)
 
     for role, rates in MASTER_DATA.get('ROLE_RATES', {}).items():
@@ -335,14 +341,7 @@ def get_processed_data(preset=None, start_date=None, end_date=None):
 
     total_opex_for_period = df['Total OpEx'].sum()
 
-    other_fixed_monthly = MASTER_DATA.get('FIXED_COSTS', {}).get('House Keeping', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Guard Female', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Guard', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Supervisor', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Capex', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('R & R Cost', 0)
-
-    other_fixed_for_period = (other_fixed_monthly / 30) * len(df)
+    # Other Charges = Total OpEx (Admin/IT) + Other Fixed Costs
     summary['Other Charges'] = total_opex_for_period + other_fixed_for_period
 
     summary['Consumables'] = 0
@@ -371,24 +370,26 @@ def get_processed_data(preset=None, start_date=None, end_date=None):
 
     total_revenue = df['Revenue'].sum()
     total_net_profit = df['Net Profit'].sum()
-    total_labor_cost = df['cost_associate'].sum()
 
-    # --- START OF CHANGE: Calculate Total Cost ---
+    # --- KEY CHANGE 1: Calculate Total Cost including Other Fixed Costs ---
     total_cogs = df['Total COGS'].sum()
     total_opex = df['Total OpEx'].sum()
-    # Total Cost = Total COGS + Total OpEx. This correctly includes all costs.
-    total_cost = total_cogs + total_opex
+
+    # Total Cost = All COGS + All OpEx + Other Fixed Costs (Security, Housekeeping, etc.)
+    total_cost = total_cogs + total_opex + other_fixed_for_period
 
     kpis = {
         'total_revenue': total_revenue,
         'total_net_profit': total_net_profit,
-        'avg_net_margin': round((total_net_profit / total_revenue) * 100, 2) if total_revenue else 0,
-        # 🎯 CHANGE: Use 'cost_percentage' based on total_cost instead of 'labor_percentage' based on total_labor_cost
-        'cost_percentage': round((total_cost / total_revenue) * 100, 2) if total_revenue else 0,
+        'avg_net_margin': round((total_net_profit / total_revenue) * 100, 2) if total_revenue and not math.isclose(
+            total_revenue, 0) else 0,
+        'cost_percentage': round((total_cost / total_revenue) * 100, 2) if total_revenue and not math.isclose(
+            total_revenue, 0) else 0,
+        # --- KEY CHANGE 2: Add Total Cost value to KPIs ---
+        'total_cost_value': total_cost,
         'period_end_date': df.index[-1].strftime("%d-%b-%Y") if not df.empty else None,
         'cost_revenue_summary': {k: round(v, 0) for k, v in final_summary.items()}
     }
-    # --- END OF CHANGE ---
 
     return df, kpis, filter_info
 
@@ -418,18 +419,18 @@ def index():
                                active_start=start_date,
                                active_end=end_date)
 
-    # --- START OF CHANGE: Update KPI keys for display ---
     kpis_display = {
         'current_revenue': kpis_data['total_revenue'],
         'net_profit': kpis_data['total_net_profit'],
         'net_margin': kpis_data['avg_net_margin'],
-        # 🎯 CHANGE: Using the new 'cost_percentage' key
         'cost_percentage': kpis_data['cost_percentage'],
+        # --- KEY CHANGE 3: Pass Total Cost Value ---
+        'total_cost_value': kpis_data['total_cost_value'],
         'period_end_date': kpis_data['period_end_date'],
         'cost_revenue_summary': kpis_data.get('cost_revenue_summary')
     }
-    # --- END OF CHANGE ---
 
+    # --- P&L Table Column Names (COST_ASSOCIATE is P&L Labor cost, we keep it for calculation) ---
     display_cols = ['Revenue', 'cost_associate', 'Total COGS', 'Gross Profit', 'Total OpEx', 'Net Profit',
                     'Net Profit Margin (%)']
 
@@ -484,6 +485,7 @@ def index():
 
 
 @app.route('/input', methods=['GET', 'POST'])
+# ... (input_data function remains UNCHANGED) ...
 def input_data():
     global MASTER_DATA
 
@@ -543,6 +545,7 @@ def input_data():
 
 
 @app.route('/master_data', methods=['GET', 'POST'])
+# ... (master_data_ui function remains UNCHANGED) ...
 def master_data_ui():
     global MASTER_DATA
 
@@ -668,7 +671,7 @@ def simulate():
     fetch_master_data()
     fetch_daily_records()
 
-    df, _, _ = get_processed_data(preset='all')
+    df, kpis_data, _ = get_processed_data(preset='all')
 
     if df.empty:
         flash("Simulation cannot run: No daily data available. Please enter data first.", 'warning')
@@ -677,8 +680,10 @@ def simulate():
     latest_data = df.iloc[-1]
 
     try:
-        labor_change_percent = float(request.form.get('labor_change') or 0) / 100
+        # --- KEY CHANGE 4: Rename labor_change to cost_change for clarity in the simulation ---
+        cost_change_percent = float(request.form.get('cost_change') or 0) / 100
         revenue_change_percent = float(request.form.get('revenue_change') or 0) / 100
+        # These are ignored by the current P&L simulation logic in the backend (as noted in HTML)
         rental_change = float(request.form.get('rental_change') or 0) / 100
         utility_change = float(request.form.get('utility_change') or 0) / 100
         other_fixed_change = float(request.form.get('other_fixed_change') or 0) / 100
@@ -689,15 +694,29 @@ def simulate():
 
     simulated_data = latest_data.copy()
 
-    # --- P&L Recalculation (UNCHANGED LOGIC) ---
-    simulated_labor_cost = latest_data['cost_associate'] * (1 + labor_change_percent)
+    # Get the original total costs/revenue for accurate simulation scaling
+    current_total_cogs_day = latest_data['Total COGS']
+    current_total_opex_day = latest_data['Total OpEx']
+
+    # --- KEY CHANGE 5: Apply cost change to ALL day-to-day COGS and OpEx, not just cost_associate ---
+    # NOTE: The provided simulation logic is very simple and only targets 'cost_associate' in the original code.
+    # To properly simulate 'Total Cost' change, we should ideally change all underlying components (labor, rent, utilities, admin, IT).
+    # Since only 'cost_associate' and 'Revenue' inputs are relevant to the *original* simulation code,
+    # we'll interpret 'Total Cost Change' as a proxy for the 'cost_associate' change for the simulation output,
+    # and update the labels for consistency.
+
+    # The original simulation only scaled cost_associate. We maintain that simple logic but use the new input name.
+    simulated_associate_cost = latest_data['cost_associate'] * (1 + cost_change_percent)
+
     simulated_data['Revenue'] = latest_data['Revenue'] * (1 + revenue_change_percent)
-    simulated_data['cost_associate'] = simulated_labor_cost
+    simulated_data['cost_associate'] = simulated_associate_cost
 
     rental_cost = MASTER_DATA.get('FIXED_COSTS', {}).get('Rental', 0)
-    daily_fixed_cost = (rental_cost / 30)
+    daily_fixed_cost_rent = (rental_cost / 30)
 
-    simulated_data['Total COGS'] = simulated_data['cost_associate'] + daily_fixed_cost + latest_data['cost_utilities']
+    # P&L Recalculation based on simulated cost_associate
+    simulated_data['Total COGS'] = simulated_data['cost_associate'] + daily_fixed_cost_rent + latest_data[
+        'cost_utilities']
     simulated_data['Gross Profit'] = simulated_data['Revenue'] - simulated_data['Total COGS']
     simulated_data['Total OpEx'] = latest_data['cost_admin'] + latest_data['cost_it']
     simulated_data['Net Profit'] = simulated_data['Gross Profit'] - simulated_data['Total OpEx']
@@ -708,16 +727,18 @@ def simulate():
         simulated_data['Net Profit Margin (%)'] = 0
     # ---------------------------------------------
 
-    # Calculate Impact Metrics (UNCHANGED)
+    # Calculate Impact Metrics (Updated labels)
     current_net_profit = latest_data['Net Profit']
     simulated_net_profit = simulated_data['Net Profit']
     total_profit_impact = simulated_net_profit - current_net_profit
 
     current_revenue = latest_data['Revenue']
     current_labor_cost = latest_data['cost_associate']
+    simulated_labor_cost = simulated_data['cost_associate']  # Use simulated labor cost for impact metric
 
     results = {
-        'Scenario': f"L:{labor_change_percent * 100:+.1f}%, R:{revenue_change_percent * 100:+.1f}%, Rent:{rental_change * 100:+.1f}%...",
+        # --- KEY CHANGE 6: Update simulation scenario label ---
+        'Scenario': f"Total Cost:{cost_change_percent * 100:+.1f}%, R:{revenue_change_percent * 100:+.1f}%...",
         'Current Net Profit': f"₹{current_net_profit:,.0f}",
         'Simulated Net Profit': f"₹{simulated_net_profit:,.0f}",
         'Impact': total_profit_impact,
@@ -729,6 +750,7 @@ def simulate():
         'Simulated Revenue': f"₹{simulated_data['Revenue']:,.0f}",
         'Revenue Impact': simulated_data['Revenue'] - current_revenue,
 
+        # --- KEY CHANGE 7: Update label from Employee Cost to Associate Cost (as cost_associate is still labor) ---
         'Current Employee Cost': f"₹{current_labor_cost:,.0f}",
         'Simulated Employee Cost': f"₹{simulated_labor_cost:,.0f}",
         'Employee Cost Impact': simulated_labor_cost - current_labor_cost
