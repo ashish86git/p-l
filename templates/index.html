@@ -1,500 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse P&L Decision Portal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        /* Modern, subtle background */
-        body {
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            background-color: #f7f9fb; /* Light background for contrast */
-        }
-
-        /* Styling the Navigation and Actions */
-        .nav-bar { background-color: #dc2626; } /* Darker for professional look */
-
-        /* General Card Shadow and border-radius */
-        .panel-card {
-            border-radius: 1rem;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease;
-        }
-
-        /* KPI Card Styling (Enhanced) */
-        .kpi-card {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border-left: 6px solid;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            background-color: white;
-        }
-        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15); }
-        .kpi-revenue { border-color: #10b981; } /* Emerald */
-        .kpi-profit { border-color: #3b82f6; }  /* Blue */
-        .kpi-margin { border-color: #f59e0b; }  /* Amber */
-        .kpi-cost { border-color: #ef4444; }    /* Red */
-        .kpi-total-cost { border-color: #a855f7; } /* Purple for total cost value */
-
-
-        /* --- SMART TABLE STYLING FOR pl_table (Daily Breakdown) --- */
-        .table-responsive table {
-            width: 100%;
-            border-collapse: collapse; /* Use collapse for Excel-like borders */
-            border: 1px solid #d1d5db; /* Light gray border for the whole table */
-        }
-        .table-responsive thead th {
-            background-color: #eef2ff; /* Indigo-50 */
-            color: #4338ca; /* Indigo-700 */
-            padding: 1rem 1.25rem;
-            text-align: left;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 700;
-            border: 1px solid #d1d5db;
-        }
-        .table-responsive tbody th {
-            /* Pandas uses <th> for index/date column */
-            background-color: #f9fafb; /* Very light gray for date/index column */
-            color: #1f2937;
-            padding: 0.75rem 1.25rem;
-            text-align: left;
-            font-weight: 600;
-            border: 1px solid #d1d5db;
-        }
-        .table-responsive tbody td {
-            padding: 0.75rem 1.25rem;
-            color: #374151;
-            vertical-align: middle;
-            border: 1px solid #d1d5db; /* Cell borders like in your image */
-        }
-        .table-responsive tbody tr:nth-child(even) {
-            background-color: #f9fafb; /* Zebra striping for readability */
-        }
-        .table-responsive tbody tr:hover {
-            background-color: #f3f4f6; /* Subtle hover */
-        }
-
-        /* Custom styling for the total row injected via Python */
-        .table-responsive table tbody tr.bg-indigo-100 td,
-        .table-responsive table tbody tr.bg-indigo-100 th {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #312e81; /* Indigo-800 */
-            border-top: 3px solid #6366f1 !important; /* Visual Total separator */
-            background-color: #eef2ff !important; /* Total row background */
-        }
-
-        /* Styling for the kpis.cost_revenue_summary (Total Summary) */
-        .summary-table-container {
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            background-color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-        .summary-table-container table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .summary-table-container th {
-            background-color: #f3f4f6;
-            text-align: left;
-            padding: 1rem 1.5rem;
-            font-size: 0.875rem;
-            font-weight: 700;
-            color: #4b5563;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .summary-table-container td {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #f3f4f6;
-        }
-        .summary-revenue { color: #059669; font-weight: 600; }
-        .summary-cost { color: #dc2626; font-weight: 600; }
-        .summary-other { color: #4f46e5; font-weight: 600; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily P&L Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background-color: #f5f7fa; }
+    h2 { color: #0d6efd; }
+    .card-header { background-color: #0d6efd; color: white; font-weight: bold; }
+    .table thead th { background-color: #0d6efd; color: white; }
+    .table tbody tr:hover { background-color: #e9f5ff; }
+    tr.total-row { font-weight: bold; background-color: #cfe2ff; border-top: 3px solid #0d6efd; }
+    .quick-filters .btn { margin-right: 5px; margin-bottom: 5px; }
+  </style>
 </head>
 <body>
-    <nav class="nav-bar shadow-xl sticky top-0 z-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0">
-                    <span class="text-white text-2xl font-extrabold tracking-wider">P&L Decision Portal</span>
-                </div>
-                <a href="{{ url_for('index') }}" class="px-4 py-2 text-sm font-semibold rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition duration-150">
-                    Dashboard Home
-                </a>
-            </div>
-        </div>
-    </nav>
+  <div class="container mt-5">
+    <h2 class="mb-4 text-center">📊 Daily P&L Dashboard</h2>
 
-    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-
-        <div class="flex flex-col sm:flex-row justify-start mb-8 space-y-4 sm:space-y-0 sm:space-x-6">
-            <a href="{{ url_for('input_data') }}" class="px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition duration-300 transform hover:scale-[1.02] flex items-center justify-center">
-                <span class="text-xl mr-3">📝</span> Daily P&L Data Entry
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-header">Filter & Quick Date Selection</div>
+      <div class="card-body">
+        <form method="get" action="{{ url_for('index') }}" class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label for="start_date" class="form-label">Start Date</label>
+            <input type="date" class="form-control" name="start_date" id="start_date" value="{{ request.args.get('start_date','') }}">
+          </div>
+          <div class="col-md-3">
+            <label for="end_date" class="form-label">End Date</label>
+            <input type="date" class="form-control" name="end_date" id="end_date" value="{{ request.args.get('end_date','') }}">
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="bi bi-funnel"></i> Apply
+            </button>
+          </div>
+          <div class="col-md-4 text-end">
+            <!-- Buttons -->
+            <a href="{{ url_for('master_data') }}" class="btn btn-outline-secondary me-2">
+              ⚙️ Master/Rates Input
             </a>
-            <a href="{{ url_for('master_data_ui') }}" class="px-8 py-3 rounded-xl font-bold text-white bg-teal-600 hover:bg-teal-700 shadow-lg shadow-teal-200 transition duration-300 transform hover:scale-[1.02] flex items-center justify-center">
-                <span class="text-xl mr-3">⚙️</span> Manage Master Data
+            <a href="{{ url_for('input_data') }}" class="btn btn-outline-success">
+              ✏️ Input Daily Data
             </a>
+          </div>
+        </form>
+
+        <!-- Quick Date Filters -->
+        <div class="mt-3 quick-filters">
+          <a href="{{ url_for('index', start_date=today, end_date=today) }}" class="btn btn-sm btn-info text-white">Today</a>
+          <a href="{{ url_for('index', start_date=week_start, end_date=today) }}" class="btn btn-sm btn-info text-white">This Week</a>
+          <a href="{{ url_for('index', start_date=month_start, end_date=today) }}" class="btn btn-sm btn-info text-white">This Month</a>
+          <a href="{{ url_for('index', start_date=year_start, end_date=today) }}" class="btn btn-sm btn-info text-white">This Year</a>
         </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="panel-card p-4 mb-6 text-sm rounded-lg {% if category == 'success' %}bg-green-100 text-green-800 border border-green-300{% elif category == 'warning' %}bg-yellow-100 text-yellow-800 border border-yellow-300{% else %}bg-red-100 text-red-800 border border-red-300{% endif %}" role="alert">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <h2 class="text-4xl font-extrabold mb-6 text-gray-900">Operational P&L Dashboard</h2>
-
-        <div class="panel-card bg-white p-6 mb-8 border border-gray-100">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between cursor-pointer" onclick="document.getElementById('filter-content').classList.toggle('hidden');">
-                <h3 class="text-xl font-bold text-indigo-700 flex items-center">
-                    <svg class="w-6 h-6 mr-2 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8h12a2 2 0 002-2v-3a2 2 0 00-.545-1.34L15 14m-1-8H9m2-4v2m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8h12a2 2 0 002-2v-3a2 2 0 00-.545-1.34L15 14"></path></svg>
-                    Filter Data Period (Date Range Selector)
-                </h3>
-                <span class="text-sm font-semibold text-gray-500 mt-2 sm:mt-0">
-                    Viewing: <span class="text-teal-600 font-extrabold">
-                        {% if active_start and active_end %}
-                            {{ active_start }} to {{ active_end }}
-                        {% elif filter_info.status %}
-                            {{ filter_info.status }}
-                        {% else %}
-                            No Filter (Showing All Data)
-                        {% endif %}
-                    </span>
-                </span>
-            </div>
-
-            <div id="filter-content" class="mt-4 border-t pt-4 {% if not active_preset and not active_start %}hidden{% endif %}">
-                <form action="{{ url_for('index') }}" method="get" id="filterForm">
-                    <div class="mb-6 flex flex-wrap gap-3">
-                        <button type="button" data-preset="all" class="preset-btn px-5 py-2 text-sm font-medium rounded-full transition-colors {% if active_preset == 'all' or not active_preset and not active_start and not active_end %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-200 text-gray-700 hover:bg-indigo-100{% endif %}">Show All Data</button>
-                        <button type="button" data-preset="week" class="preset-btn px-5 py-2 text-sm font-medium rounded-full transition-colors {% if active_preset == 'week' %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-200 text-gray-700 hover:bg-indigo-100{% endif %}">Last 7 Days</button>
-                        <button type="button" data-preset="month" class="preset-btn px-5 py-2 text-sm font-medium rounded-full transition-colors {% if active_preset == 'month' %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-200 text-gray-700 hover:bg-indigo-100{% endif %}">Last 30 Days</button>
-                        <button type="button" data-preset="year" class="preset-btn px-5 py-2 text-sm font-medium rounded-full transition-colors {% if active_preset == 'year' %}bg-indigo-600 text-white shadow-md{% else %}bg-gray-200 text-gray-700 hover:bg-indigo-100{% endif %}">Last 365 Days</button>
-                        <input type="hidden" name="preset" id="presetInput" value="{{ active_preset if active_preset and active_preset != 'all' else '' }}">
-                    </div>
-
-                    <p class="text-lg font-bold text-gray-700 mb-3 border-t pt-3">Or Select Custom Date Range:</p>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                        <div>
-                            <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" value="{{ active_start or '' }}">
-                        </div>
-                        <div>
-                            <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                            <input type="date" name="end_date" id="end_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" value="{{ active_end or '' }}">
-                        </div>
-                        <button type="submit" class="w-full sm:col-span-1 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">
-                            Apply Custom Range
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        {% if kpis %}
-            <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Key Performance Indicators (Filtered Period Total)</h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
-
-                <div class="kpi-card p-6 kpi-revenue">
-                    <p class="text-sm font-semibold text-gray-500 mb-1">Total Period Revenue</p>
-                    <h3 class="text-3xl font-extrabold text-emerald-700">₹{{ "{:,.0f}".format(kpis.current_revenue) }}</h3>
-                    <p class="text-xs text-gray-400 mt-2">Period End Date: {{ kpis.period_end_date }}</p>
-                </div>
-
-                {# --- KEY CHANGE 4: New KPI Card for Total Cost Value --- #}
-                <div class="kpi-card p-6 kpi-total-cost">
-                    <p class="text-sm font-semibold text-gray-500 mb-1">Total Cost Value</p>
-                    <h3 class="text-3xl font-extrabold text-purple-700">₹{{ "{:,.0f}".format(kpis.total_cost_value) }}</h3>
-                </div>
-
-                <div class="kpi-card p-6 kpi-profit">
-                    <p class="text-sm font-semibold text-gray-500 mb-1">Total Net Profit</p>
-                    <h3 class="text-3xl font-extrabold text-blue-700">₹{{ "{:,.0f}".format(kpis.net_profit) }}</h3>
-                </div>
-
-                <div class="kpi-card p-6 kpi-margin">
-                    <p class="text-sm font-semibold text-gray-500 mb-1">Avg. Net Margin (%)</p>
-                    <h3 class="text-3xl font-extrabold text-amber-700">{{ kpis.net_margin }}%</h3>
-                </div>
-
-                <div class="kpi-card p-6 kpi-cost">
-                    <p class="text-sm font-semibold text-gray-500 mb-1">Total Cost % of Revenue</p>
-                    <h3 class="text-3xl font-extrabold text-red-700">{{ kpis.cost_percentage }}%</h3>
-                </div>
-            </div>
-
-            {% if kpis.cost_revenue_summary %}
-                <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
-                    <span class="text-2xl mr-2 text-purple-600">📊</span> Cost & Revenue Summary (Filtered Period Total)
-                </h3>
-                <div class="summary-table-container mb-10 overflow-x-auto panel-card">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Total Value (₹)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item, value in kpis.cost_revenue_summary.items() %}
-                                <tr>
-                                    <td class="text-gray-700 font-medium">{{ item }}</td>
-                                    <td class="
-                                        {% if 'Revenue' in item or 'CBM' in item %}summary-revenue
-                                        {% elif 'Cost' in item or 'Collar' in item or 'Attendance' in item or 'Over Time' in item or 'Charges' in item or 'Electretion' in item %}summary-cost
-                                        {% else %}summary-other
-                                        {% endif %}
-                                    ">
-                                        ₹{{ "{:,.0f}".format(value) }}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% endif %}
-
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 flex items-center">
-                    <span class="text-2xl mr-2 text-indigo-600">📅</span> Daily P&L Breakdown (Date Wise Detail - Similar to your data)
-                </h3>
-                <button onclick="exportTableToCSV('pl-table', 'daily_pnl_data.csv')"
-                        class="px-4 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition duration-150 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Export to CSV
-                </button>
-            </div>
-
-            <div class="table-responsive mb-10 overflow-x-auto panel-card">
-                <div id="pl-table">
-                    {# --- KEY CHANGE 5: Update the table header for 'cost_associate' in the P&L breakdown for display clarity --- #}
-                    {{ pl_table | safe | replace('cost_associate', 'Total Associate Cost (P&L)') }}
-                </div>
-            </div>
-            <div class="panel-card bg-white p-8 border-t-4 border-indigo-600 shadow-xl">
-                <h2 class="text-3xl font-extrabold mb-4 text-indigo-800 flex items-center">
-                    <span class="text-4xl mr-3">💡</span> Decision Making Simulator
-                </h2>
-                <p class="text-lg text-gray-600 mb-6 border-b pb-4">
-                    Assess potential changes to the Operating Margin.
-                    <span class="font-semibold text-red-500">Note: The current backend logic only applies changes to Associate Cost and Revenue.</span>
-                </p>
-
-                <form action="{{ url_for('simulate') }}" method="post" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            {# --- KEY CHANGE 6: Update form label and input name from labor_change to cost_change --- #}
-                            <label for="cost_change" class="block text-sm font-bold text-gray-700 mb-2">1. Total Cost (Proxy) Change (%)</label>
-                            <input type="number" step="0.1" name="cost_change" id="cost_change" class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., -5 for a 5% reduction" required>
-                            <small class="block mt-2 text-gray-500">Impact of change in main associate costs or other variable costs.</small>
-                        </div>
-                        <div>
-                            <label for="revenue_change" class="block text-sm font-bold text-gray-700 mb-2">2. Revenue Change (%)</label>
-                            <input type="number" step="0.1" name="revenue_change" id="revenue_change" class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 10 for a 10% increase" required>
-                            <small class="block mt-2 text-gray-500">Impact of new clients, price adjustments, or changes in sales volume.</small>
-                        </div>
-                        <div>
-                            <label for="rental_change" class="block text-sm font-bold text-gray-700 mb-2">3. Rental Cost Change (%)</label>
-                            <input type="number" step="0.1" name="rental_change" id="rental_change" class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 0 for no change (ignored by current logic)">
-                            <small class="block mt-2 text-red-500 font-medium">⚠️ This input is currently ignored by the simulation logic in app.py.</small>
-                        </div>
-                         <div>
-                            <label for="utility_change" class="block text-sm font-bold text-gray-700 mb-2">4. Utility Cost Change (%)</label>
-                            <input type="number" step="0.1" name="utility_change" id="utility_change" class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 0 for no change (ignored by current logic)">
-                            <small class="block mt-2 text-red-500 font-medium">⚠️ This input is currently ignored by the simulation logic in app.py.</small>
-                        </div>
-                    </div>
-                    <button type="submit" class="mt-6 w-full py-3 px-6 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-[1.01]">
-                        Run Simulation and View Impact
-                    </button>
-                </form>
-            </div>
-
-
-        {% else %}
-            <div class="panel-card p-12 bg-white border-4 border-dashed border-gray-300 rounded-2xl text-center shadow-lg mt-12">
-                <p class="text-6xl mb-4" role="img" aria-label="Warning">📉</p>
-                <h4 class="text-3xl font-bold text-gray-800 mb-3">No Operational Data Available!</h4>
-                <p class="text-xl text-gray-600">Please use the **Daily P&L Data Entry** button to input the first day's figures.</p>
-                {% if "Filter" in filter_info.status and "No Filter" not in filter_info.status %}
-                    <p class="text-lg text-red-500 mt-4 font-medium">{{ filter_info.status }}</p>
-                {% endif %}
-            </div>
-        {% endif %}
-
+      </div>
     </div>
 
-    <script>
-        /**
-         * Function to export an HTML table element to a CSV file.
-         */
-        function exportTableToCSV(containerId, filename) {
-            const container = document.getElementById(containerId);
-            if (!container || !container.querySelector('table')) {
-                alert("No P&L table found inside the container.");
-                return;
-            }
+    <!-- P&L Table -->
+    <div class="table-responsive shadow-sm">
+      {% if daily_table %}
+        {{ daily_table|safe }}
+      {% else %}
+        <div class="alert alert-warning text-center mt-3">
+          No P&L data available for the selected period. Please adjust the dates.
+        </div>
+      {% endif %}
+    </div>
+  </div>
 
-            const table = container.querySelector('table');
-            let csv = [];
-
-            // --- 1. Get Headers ---
-            let headers = [];
-            const headerRow = table.querySelector('thead tr');
-
-            if (headerRow) {
-                // Manually add 'Date' for the index column which is often missing a header
-                headers.push('"Date"');
-
-                headerRow.querySelectorAll('th').forEach(th => {
-                    let headerText = th.innerText.trim();
-                    // Replace the display name back to the internal column name for CSV clarity if needed,
-                    // but usually the display name is fine for export. We'll use display names.
-
-                    if (headerText) {
-                        // Replace the updated display name back to a simple header for CSV tools
-                        if (headerText === 'Total Associate Cost (P&L)') {
-                            headerText = 'cost_associate';
-                        }
-                        headers.push('"' + headerText.replace(/"/g, '""') + '"');
-                    }
-                });
-            } else {
-                 alert("Table header structure is unusual. Exporting rows only.");
-                 return;
-            }
-            csv.push(headers.join(','));
-
-
-            // --- 2. Get Body Rows ---
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                let rowData = [];
-
-                // Get ALL cells (both <th> for index/Date and <td> for data)
-                const cells = tr.querySelectorAll('th, td');
-
-                cells.forEach(cell => {
-                    let text = cell.innerText.trim();
-                    // Remove currency symbols and thousands separators for clean numeric CSV data
-                    text = text.replace(/₹/g, '').replace(/,/g, '');
-
-                    rowData.push('"' + text.replace(/"/g, '""') + '"');
-                });
-
-                if (rowData.length > 0) {
-                    csv.push(rowData.join(','));
-                }
-            });
-
-            // --- 3. Download the CSV ---
-            const csvFile = csv.join('\n');
-            const blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-
-            if (link.download !== undefined) {
-                link.setAttribute('href', URL.createObjectURL(blob));
-                link.setAttribute('download', filename);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                alert("Download not supported by this browser. Please try copying the table data manually.");
-            }
-        }
-
-
-        // Existing JS logic for filter buttons (UNCHANGED)
-        document.addEventListener('DOMContentLoaded', function() {
-            const presetBtns = document.querySelectorAll('.preset-btn');
-            const startInput = document.getElementById('start_date');
-            const endInput = document.getElementById('end_date');
-            const presetInput = document.getElementById('presetInput');
-            const filterForm = document.getElementById('filterForm');
-
-            // Function to clear custom dates
-            const clearCustomDates = () => {
-                startInput.value = '';
-                endInput.value = '';
-            };
-
-            // Function to clear preset input and remove active class
-            const clearPreset = () => {
-                presetInput.value = '';
-                presetBtns.forEach(btn => {
-                    btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
-                    btn.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-indigo-100');
-                });
-            };
-
-            // Preset button listener
-            presetBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const selectedPreset = this.getAttribute('data-preset');
-
-                    // Clear all before setting the new one
-                    clearPreset();
-                    clearCustomDates();
-
-                    // Set the hidden input value
-                    presetInput.value = selectedPreset === 'all' ? '' : selectedPreset;
-
-                    // Add active class
-                    this.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-indigo-100');
-                    this.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-
-                    // Submit the form with only the preset
-                    filterForm.submit();
-                });
-            });
-
-            // Custom date listener (if custom dates are changed, clear preset)
-            [startInput, endInput].forEach(input => {
-                input.addEventListener('change', function() {
-                    if (startInput.value || endInput.value) {
-                        clearPreset();
-                        // Submitting the form will now prioritize start_date/end_date over the cleared presetInput value
-                    }
-                });
-            });
-
-            // Re-apply active class/state on page load based on current query parameters
-            const currentPreset = presetInput.value;
-            const customDatesPresent = startInput.value || endInput.value;
-
-            if (customDatesPresent) {
-                clearPreset();
-            } else if (currentPreset) {
-                presetBtns.forEach(btn => {
-                    if(btn.getAttribute('data-preset') === currentPreset) {
-                        btn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-indigo-100');
-                        btn.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-                    }
-                });
-            } else {
-                 // Default to 'Show All Data' if no filter is applied
-                 presetBtns.forEach(btn => {
-                    if(btn.getAttribute('data-preset') === 'all') {
-                        btn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-indigo-100');
-                        btn.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
-                    }
-                });
-            }
-        });
-    </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

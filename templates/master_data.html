@@ -155,7 +155,7 @@
                                 <td>{{ "{:,.2f}".format(data.daily_cost) }}</td>
                                 <td>{{ data.description }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('master_data') }}" style="display:inline;">
                                         <input type="hidden" name="category" value="role_rates">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="role_name" value="{{ role }}">
@@ -169,7 +169,7 @@
                 </div>
 
                 <h6 class="mt-4 text-primary">Update Existing Role Details (Salary, Description)</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-4">
                     <input type="hidden" name="category" value="role_rates">
                     <input type="hidden" name="action" value="update_existing">
                     <div class="row g-3">
@@ -189,7 +189,7 @@
                 </form>
 
                 <h6 class="mt-4 text-danger">Add New Role</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container">
                     <input type="hidden" name="category" value="role_rates">
                     <input type="hidden" name="action" value="add_new">
                     <div class="row g-3">
@@ -226,7 +226,7 @@
                                 <td class="text-center fw-bold text-red-accent">{{ "{:,.1f}".format(data.monthly_rating) }}</td>
                                 <td class="fw-bold">₹{{ "{:,.0f}".format(data.adjusted_salary) }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('master_data') }}" style="display:inline;">
                                         <input type="hidden" name="category" value="employee_salaries">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="emp_code" value="{{ code }}">
@@ -240,7 +240,7 @@
                 </div>
 
                 <h5 class="mt-4 text-red-accent">Update Employee Monthly Rating (0.0 to 5.0)</h5>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-5">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-5">
                     <input type="hidden" name="category" value="employee_salaries">
                     <input type="hidden" name="action" value="update_rating">
                     <div class="row g-3">
@@ -251,7 +251,7 @@
                 </form>
 
                 <h5 class="mt-5 text-red-accent">Add/Update Employee Details (Base Salary)</h5>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container">
                     <input type="hidden" name="category" value="employee_salaries">
                     <input type="hidden" name="action" value="add_or_update">
                     <div class="row g-3">
@@ -285,7 +285,7 @@
                                 <td>₹{{ "{:,.0f}".format(cost) }}</td>
                                 <td>₹{{ "{:,.2f}".format(cost / 30) }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('master_data') }}" style="display:inline;">
                                         <input type="hidden" name="category" value="fixed_costs">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="cost_name" value="{{ item }}">
@@ -299,7 +299,7 @@
                 </div>
 
                 <h6 class="mt-4 text-primary">Update Existing Fixed Cost (Select Name from Dropdown)</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-4">
                     <input type="hidden" name="category" value="fixed_costs">
                     <input type="hidden" name="action" value="update_existing">
                     <div class="row g-3">
@@ -318,7 +318,7 @@
                 </form>
 
                 <h6 class="mt-4 text-danger">Add New Fixed Cost</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container">
                     <input type="hidden" name="category" value="fixed_costs">
                     <input type="hidden" name="action" value="add_new">
                     <div class="row g-3">
@@ -343,7 +343,7 @@
                                 <td class="fw-bold">{{ item }}</td>
                                 <td>₹{{ "{:,.2f}".format(rate) }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('master_data') }}" style="display:inline;">
                                         <input type="hidden" name="category" value="revenue_rates">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="rate_name" value="{{ item }}">
@@ -357,7 +357,7 @@
                 </div>
 
                 <h6 class="mt-4 text-primary">Update Existing Revenue Rate (Select Name from Dropdown)</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-4">
                     <input type="hidden" name="category" value="revenue_rates">
                     <input type="hidden" name="action" value="update_existing">
                     <div class="row g-3">
@@ -381,7 +381,7 @@
                 </form>
 
                 <h6 class="mt-4 text-success">Add New Revenue Rate (New Name)</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-5">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-5">
                     <input type="hidden" name="category" value="revenue_rates">
                     <input type="hidden" name="action" value="add_new">
                     <div class="row g-3">
@@ -411,7 +411,7 @@
                                 <td class="fw-bold">{{ item }}</td>
                                 <td>₹{{ "{:,.2f}".format(rate) }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('master_data') }}" style="display:inline;">
                                         <input type="hidden" name="category" value="consumable_rates">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="item_name" value="{{ item }}">
@@ -425,7 +425,7 @@
                 </div>
 
                 <h6 class="mt-4 text-primary">Update Existing Consumable Rate (Select Name from Dropdown)</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-4">
                     <input type="hidden" name="category" value="consumable_rates">
                     <input type="hidden" name="action" value="update_existing">
                     <div class="row g-3">
@@ -449,7 +449,7 @@
                 </form>
 
                 <h6 class="mt-4 text-info">Add New Consumable Rate</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-5">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-5">
                     <input type="hidden" name="category" value="consumable_rates">
                     <input type="hidden" name="action" value="add_new">
                     <div class="row g-3">
@@ -471,7 +471,7 @@
                                 <td class="fw-bold">{{ item }}</td>
                                 <td>₹{{ "{:,.2f}".format(rate) }}</td>
                                 <td class="text-center">
-                                    <form method="POST" action="{{ url_for('master_data_ui') }}" style="display:inline;">
+                                    <form method="POST" action="{{ url_for('master_data') }}" style="display:inline;">
                                         <input type="hidden" name="category" value="adhoc_rates">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="rate_name" value="{{ item }}">
@@ -485,7 +485,7 @@
                 </div>
 
                 <h6 class="mt-4 text-primary">Update Existing Adhoc Rate (Select Name from Dropdown)</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-4">
                     <input type="hidden" name="category" value="adhoc_rates">
                     <input type="hidden" name="action" value="update_existing">
                     <div class="row g-3">
@@ -509,7 +509,7 @@
                 </form>
 
                 <h6 class="mt-4 text-warning">Add New Adhoc Rate</h6>
-                <form method="POST" action="{{ url_for('master_data_ui') }}" class="form-container mb-4">
+                <form method="POST" action="{{ url_for('master_data') }}" class="form-container mb-4">
                     <input type="hidden" name="category" value="adhoc_rates">
                     <input type="hidden" name="action" value="add_new">
                     <div class="row g-3">
