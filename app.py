@@ -4,13 +4,13 @@ import pandas as pd
 import datetime
 import numpy as np
 import decimal
-import math  # Added math for checking NaN/inf
+import math  # For checking NaN/inf
 
 # --- APP SETUP ---
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
-# --- DATABASE CONNECTION CONFIGURATION (UNCHANGED) ---
+# --- DATABASE CONNECTION CONFIGURATION ---
 app.config['SQLALCHEMY_DATABASE_URI'] = (
     'postgresql://{user}:{password}@{host}:{port}/{database}'.format(
         user='u7tqojjihbpn7s',
@@ -22,53 +22,75 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-# ----------------------------------------------------------------
 
-# --- GLOBAL DATA STORAGE (ORM-Based) ---
+# --- GLOBAL DATA ---
 MASTER_DATA = {}
 warehouse_data = []
 
-
-# ====================================================================
-# --- SQLALCHEMY MODELS (UNCHANGED) ---
-# ====================================================================
+# ==========================
+# --- SQLAlchemy MODELS ---
+# ==========================
 
 class DailyRecords(db.Model):
     __tablename__ = 'daily_records'
-    date = db.Column(db.Date, primary_key=True)
-    revenue_warehouse = db.Column(db.Numeric(10, 2), nullable=False)
-    revenue_freight = db.Column(db.Numeric(10, 2), nullable=False)
-    cost_rent = db.Column(db.Numeric(10, 2))
-    cost_utilities = db.Column(db.Numeric(10, 2))
-    cost_admin = db.Column(db.Numeric(10, 2))
-    cost_it = db.Column(db.Numeric(10, 2))
-
-    staff_blue_collar_attendance = db.Column(db.Integer, default=0)
-    staff_loading_unloadingattendance = db.Column(db.Integer, default=0)
-    staff_electretion = db.Column(db.Integer, default=0)
+    id = db.Column(db.Integer, primary_key=True)
+    entry_date = db.Column(db.Date, nullable=False, unique=True)
+    revenue_warehouse = db.Column(db.Float, default=0.0)
+    revenue_freight = db.Column(db.Float, default=0.0)
+    staff_supervisor = db.Column(db.Integer, default=0)
+    staff_blue_collar = db.Column(db.Integer, default=0)
+    staff_loader = db.Column(db.Integer, default=0)
     supervisor_vender = db.Column(db.Integer, default=0)
     staff_adhoc_manpower = db.Column(db.Integer, default=0)
+    ot_supervisor_hrs = db.Column(db.Float, default=0.0)
+    ot_blue_collar_hrs = db.Column(db.Float, default=0.0)
+    ot_loader_hrs = db.Column(db.Float, default=0.0)
+    cost_sunday_sup = db.Column(db.Float, default=0.0)
+    cost_sunday_bc = db.Column(db.Float, default=0.0)
+    cost_holiday_mgmt = db.Column(db.Float, default=0.0)
+    cost_other_charges = db.Column(db.Float, default=0.0)
+    cost_security_guard = db.Column(db.Float, default=0.0)
+    cost_security_female = db.Column(db.Float, default=0.0)
+    cost_security_supervisor = db.Column(db.Float, default=0.0)
+    cost_house_keeping = db.Column(db.Float, default=0.0)
+    cost_hk_materials = db.Column(db.Float, default=0.0)
+    cost_electricity = db.Column(db.Float, default=0.0)
+    cost_electricity_sub = db.Column(db.Float, default=0.0)
+    cost_water = db.Column(db.Float, default=0.0)
+    cost_diesel = db.Column(db.Float, default=0.0)
+    cost_rental = db.Column(db.Float, default=0.0)
+    cost_staff_welfare = db.Column(db.Float, default=0.0)
+    cost_ho = db.Column(db.Float, default=0.0)
+    cost_r_and_r = db.Column(db.Float, default=0.0)
+    cost_traveling = db.Column(db.Float, default=0.0)
+    cost_convence = db.Column(db.Float, default=0.0)
+    cost_hra = db.Column(db.Float, default=0.0)
+    cost_capex = db.Column(db.Float, default=0.0)
+    cost_stationery = db.Column(db.Float, default=0.0)
+    cost_tea = db.Column(db.Float, default=0.0)
+    cost_other_expenses = db.Column(db.Float, default=0.0)
+    consumable_roll_100x150 = db.Column(db.Integer, default=0)
+    consumable_roll_75x50 = db.Column(db.Integer, default=0)
+    consumable_roll_25x50 = db.Column(db.Integer, default=0)
+    consumable_a4_paper = db.Column(db.Integer, default=0)
+    consumable_ribbon_25x50 = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     def to_dict(self):
         data = {c.name: getattr(self, c.name) for c in self.__table__.columns}
-        data['Date'] = data.pop('date').isoformat()
-        for k, v in data.items():
-            if isinstance(v, (datetime.date, str, int)): continue
-            if isinstance(v, decimal.Decimal):
-                try:
-                    data[k] = float(v)
-                except:
-                    pass
+        if isinstance(data.get('entry_date'), datetime.date):
+            data['Date'] = data.pop('entry_date').isoformat()
         return data
 
-
+# --------------------------
+# MASTER DATA MODELS
+# --------------------------
 class RoleRates(db.Model):
     __tablename__ = 'role_rates'
     role_name = db.Column(db.String(100), primary_key=True)
     monthly_salary = db.Column(db.Numeric(10, 2), nullable=False)
     daily_cost = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.String(255))
-
 
 class EmployeeSalaries(db.Model):
     __tablename__ = 'employee_salaries'
@@ -79,418 +101,345 @@ class EmployeeSalaries(db.Model):
     monthly_rating = db.Column(db.Numeric(3, 1), default=3.5)
     adjusted_salary = db.Column(db.Numeric(10, 2))
 
-
 class FixedCosts(db.Model):
     __tablename__ = 'fixed_costs'
     cost_name = db.Column(db.String(100), primary_key=True)
     cost_value = db.Column(db.Numeric(12, 2), nullable=False)
-
-
-class ConsumableRates(db.Model):
-    __tablename__ = 'consumable_rates'
-    item_name = db.Column(db.String(100), primary_key=True)
-    unit_rate = db.Column(db.Numeric(6, 2), nullable=False)
-
 
 class RevenueRates(db.Model):
     __tablename__ = 'revenue_rates'
     rate_name = db.Column(db.String(100), primary_key=True)
     rate_value = db.Column(db.Numeric(10, 2), nullable=False)
 
+# ==========================
+# --- FETCH FUNCTIONS ---
+# ==========================
 
-class AdhocRates(db.Model):
-    __tablename__ = 'adhoc_rates'
-    rate_name = db.Column(db.String(100), primary_key=True)
-    rate_value = db.Column(db.Numeric(10, 2), nullable=False)
-
-
-# ====================================================================
-# --- DB INTERACTION & HELPER FUNCTIONS ---
-# ====================================================================
-
-def calculate_adjusted_salary(base_salary, rating):
-    """Adjusts salary based on rating (UNCHANGED LOGIC)."""
-    rating = float(rating)
-    base_salary = float(base_salary)
-
-    if rating > 4.5:
-        adjustment_factor = 1.10
-    elif rating >= 4.0:
-        adjustment_factor = 1.05
-    elif rating >= 3.0:
-        adjustment_factor = 1.00
-    else:
-        adjustment_factor = 0.95
-
-    return round(base_salary * adjustment_factor, 2)
-
-
+# ================= MASTER DATA FETCH =================
 def fetch_master_data():
-    """Loads all Master Data from the DB into the global MASTER_DATA dictionary."""
+    """
+    Loads all master data from DB into MASTER_DATA dictionary safely.
+    Guarantees the keys and numeric values exist so templates can format them.
+    """
     global MASTER_DATA
-    MASTER_DATA_TEMP = {
-        "ROLE_RATES": {}, "EMPLOYEE_SALARIES": {}, "FIXED_COSTS": {},
-        "CONSUMABLE_RATES": {}, "REVENUE_RATES": {}, "ADHOC_RATES": {}
-    }
-
+    MASTER_DATA.clear()
     try:
         with app.app_context():
-            # 1. ROLE_RATES
-            roles = RoleRates.query.all()
-            MASTER_DATA_TEMP["ROLE_RATES"] = {
-                r.role_name: {
-                    'monthly_salary': float(r.monthly_salary),
-                    'daily_cost': float(r.daily_cost),
-                    'description': r.description
-                } for r in roles
+            # ROLE RATES
+            MASTER_DATA['ROLE_RATES'] = {
+                (r.role_name or ''): {
+                    # ensure numeric value, fallback 0.0
+                    'daily_cost': float(r.daily_cost) if r.daily_cost is not None else 0.0,
+                    # include monthly salary optionally (helpful if UI wants it)
+                    'monthly_salary': float(r.monthly_salary) if hasattr(r, 'monthly_salary') and r.monthly_salary is not None else 0.0,
+                    'description': r.description or ''
+                }
+                for r in RoleRates.query.all()
             }
 
-            # 2. EMPLOYEE_SALARIES
-            employees = EmployeeSalaries.query.all()
-            MASTER_DATA_TEMP["EMPLOYEE_SALARIES"] = {
-                e.emp_code: {
-                    'name': e.name,
-                    'base_salary': float(e.base_salary),
-                    'role': e.role,
-                    'monthly_rating': float(e.monthly_rating or 3.5),
-                    'adjusted_salary': calculate_adjusted_salary(float(e.base_salary), float(e.monthly_rating or 3.5))
-                } for e in employees
+            # EMPLOYEE SALARIES
+            MASTER_DATA['EMPLOYEE_SALARIES'] = {
+                (e.emp_code or ''): {
+                    'name': e.name or '',
+                    'base_salary': float(e.base_salary) if e.base_salary is not None else 0.0,
+                    'adjusted_salary': float(e.adjusted_salary) if e.adjusted_salary is not None else 0.0,
+                    # ensure monthly_rating exists as float for template formatting
+                    'monthly_rating': float(e.monthly_rating) if hasattr(e, 'monthly_rating') and e.monthly_rating is not None else 0.0,
+                    'role': e.role or ''
+                }
+                for e in EmployeeSalaries.query.all()
             }
 
-            # 3. FIXED_COSTS
-            MASTER_DATA_TEMP["FIXED_COSTS"] = {c.cost_name: float(c.cost_value) for c in FixedCosts.query.all()}
+            # FIXED COSTS
+            MASTER_DATA['FIXED_COSTS'] = {
+                (f.cost_name or ''): float(f.cost_value) if f.cost_value is not None else 0.0
+                for f in FixedCosts.query.all()
+            }
 
-            # 4. CONSUMABLE_RATES
-            MASTER_DATA_TEMP["CONSUMABLE_RATES"] = {r.item_name: float(r.unit_rate) for r in
-                                                    ConsumableRates.query.all()}
+            # REVENUE RATES
+            MASTER_DATA['REVENUE_RATES'] = {
+                (r.rate_name or ''): float(r.rate_value) if r.rate_value is not None else 0.0
+                for r in RevenueRates.query.all()
+            }
 
-            # 5. REVENUE_RATES
-            MASTER_DATA_TEMP["REVENUE_RATES"] = {r.rate_name: float(r.rate_value) for r in RevenueRates.query.all()}
+            # ADHOC RATES (make sure table AdhocRates exists in your models)
+            try:
+                MASTER_DATA['ADHOC_RATES'] = {
+                    (a.rate_name or ''): float(a.rate_value) if a.rate_value is not None else 0.0
+                    for a in AdhocRates.query.all()
+                }
+            except NameError:
+                # If you don't have AdhocRates model defined, keep it empty
+                MASTER_DATA['ADHOC_RATES'] = {}
 
-            # 6. ADHOC_RATES
-            MASTER_DATA_TEMP["ADHOC_RATES"] = {r.rate_name: float(r.rate_value) for r in AdhocRates.query.all()}
+            # CONSUMABLE RATES (template expects this)
+            try:
+                MASTER_DATA['CONSUMABLE_RATES'] = {
+                    (c.item_name or ''): float(c.unit_rate) if c.unit_rate is not None else 0.0
+                    for c in ConsumableRates.query.all()
+                }
+            except NameError:
+                MASTER_DATA['CONSUMABLE_RATES'] = {}
+
+            # Ensure all expected keys exist to avoid Undefined errors in templates
+            for key in ['ROLE_RATES', 'EMPLOYEE_SALARIES', 'FIXED_COSTS',
+                        'REVENUE_RATES', 'ADHOC_RATES', 'CONSUMABLE_RATES']:
+                if key not in MASTER_DATA or MASTER_DATA.get(key) is None:
+                    MASTER_DATA[key] = {}
 
     except Exception as e:
+        # Keep the error printed, but don't let it leave MASTER_DATA in incomplete state
         print(f"🚨 DB Error fetching master data: {e}")
+        # Ensure keys exist even on failure
+        for key in ['ROLE_RATES', 'EMPLOYEE_SALARIES', 'FIXED_COSTS',
+                    'REVENUE_RATES', 'ADHOC_RATES', 'CONSUMABLE_RATES']:
+            if key not in MASTER_DATA:
+                MASTER_DATA[key] = {}
 
-    MASTER_DATA.clear()
-    MASTER_DATA.update(MASTER_DATA_TEMP)
 
-
+# ================= DAILY RECORDS FETCH =================
 def fetch_daily_records():
-    """Loads all daily records (warehouse_data) from the database."""
+    """Loads all daily records into warehouse_data with entry_date guaranteed."""
     global warehouse_data
     warehouse_data.clear()
-
     try:
         with app.app_context():
-            db_records = DailyRecords.query.order_by(DailyRecords.date).all()
-            warehouse_data.extend([r.to_dict() for r in db_records])
+            db_records = DailyRecords.query.order_by(DailyRecords.entry_date).all()
+            for r in db_records:
+                rec = r.to_dict()
+                # Ensure 'entry_date' exists
+                if 'entry_date' not in rec and 'Date' in rec:
+                    rec['entry_date'] = rec['Date']
+                warehouse_data.append(rec)
     except Exception as e:
         print(f"🚨 DB Error fetching daily records: {e}")
 
+# ================= DAILY P&L SUMMARY ACCURATE =================
+def calculate_daily_pl_summary():
+    import pandas as pd
+    import numpy as np
 
-# Initialize data
-with app.app_context():
-    fetch_master_data()
-    fetch_daily_records()
-
-
-# ====================================================================
-# --- CORE LOGIC & ROUTES ---
-# ====================================================================
-
-def get_processed_data(preset=None, start_date=None, end_date=None):
-    """Calculates P&L metrics based on fetched data."""
     global warehouse_data, MASTER_DATA
 
-    filter_info = {"status": "No Filter (Showing All Data)", "active_start": None, "active_end": None}
-
-    fetch_daily_records()
-
-    if not warehouse_data:
-        return pd.DataFrame(), {}, filter_info
+    if not warehouse_data or not MASTER_DATA:
+        print("Warning: warehouse_data or MASTER_DATA is empty.")
+        return pd.DataFrame()
 
     df = pd.DataFrame(warehouse_data)
-    df['Date'] = pd.to_datetime(df['Date'])
-    df.set_index('Date', inplace=True)
+
+    # Date column ensure
+    if 'entry_date' not in df.columns and 'Date' in df.columns:
+        df['entry_date'] = df['Date']
+    df['entry_date'] = pd.to_datetime(df['entry_date'], errors='coerce')
+    df.dropna(subset=['entry_date'], inplace=True)
+    df.set_index('entry_date', inplace=True)
     df.sort_index(inplace=True)
 
-    # --- Filtering Logic (UNCHANGED) ---
-    df_filtered = df
-    today = datetime.date.today()
-    start_filter_date = None
-    end_filter_date = None
-
-    try:
-        if preset:
-            if preset == 'week':
-                end_filter_date = today
-                start_filter_date = end_filter_date - datetime.timedelta(days=7)
-                filter_info["status"] = "Preset: Last 7 Days"
-            elif preset == 'month':
-                end_filter_date = today
-                start_filter_date = end_filter_date - datetime.timedelta(days=30)
-                filter_info["status"] = "Preset: Last 30 Days"
-            elif preset == 'year':
-                end_filter_date = today
-                start_filter_date = end_filter_date - datetime.timedelta(days=365)
-                filter_info["status"] = "Preset: Last 365 Days"
-            elif preset == 'all':
-                filter_info["status"] = "No Filter (Showing All Data)"
-
-        elif start_date and end_date:
-            start_filter_date = pd.to_datetime(start_date).date()
-            end_filter_date = pd.to_datetime(end_date).date()
-            filter_info["status"] = "Custom Range"
-
-        if start_filter_date and end_filter_date:
-            df_filtered = df[(df.index.date >= start_filter_date) & (df.index.date <= end_filter_date)]
-            filter_info["active_start"] = start_filter_date.strftime("%Y-%m-%d")
-            filter_info["active_end"] = end_filter_date.strftime("%Y-%m-%d")
-
-        if df_filtered.empty:
-            return pd.DataFrame(), {}, filter_info
-
-    except Exception:
-        df_filtered = df
-        filter_info["status"] = "Filter Error (Showing All Data)"
-
-    df = df_filtered
-
-    # =========================================================================
-    # --- P&L Calculation Setup (UNCHANGED LOGIC) ---
-    # =========================================================================
-
-    vendor_supervisor_daily_cost = MASTER_DATA.get('REVENUE_RATES', {}).get('Adhoc Manpower Rate', 0)
-
-    total_white_collar_salary = sum(
-        emp.get('adjusted_salary', emp.get('base_salary', 0)) for emp in
-        MASTER_DATA.get('EMPLOYEE_SALARIES', {}).values())
-    daily_white_collar_cost_fixed = round(total_white_collar_salary / 30, 0)
-
-    def calculate_daily_labor_cost(row):
+    # --- 1. TOTAL LABOR COST ---
+    def labor_cost(row):
         cost = 0
-        roles = MASTER_DATA.get('ROLE_RATES', {})
+        # White Collar
+        wc = MASTER_DATA.get('ROLE_RATES', {}).get('White Colar', {})
+        cost += wc.get('daily_cost', 0)  # daily fixed cost for White Collar
 
-        for role_name, rate_data in roles.items():
-            field_name = 'staff_' + role_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
-            if field_name in row and 'daily_cost' in rate_data:
-                cost += row[field_name] * rate_data['daily_cost']
+        # Blue Collar
+        bc = MASTER_DATA.get('ROLE_RATES', {}).get('Blue Collar (Attendance)', {})
+        cost += row.get('staff_blue_collar', 0) * bc.get('daily_cost', 0)
 
-        supervisor_vender_count = row.get('supervisor_vender', 0)
-        cost += supervisor_vender_count * vendor_supervisor_daily_cost
+        # Loading / Unloading
+        loader = MASTER_DATA.get('ROLE_RATES', {}).get('Loading & Unloading(Attendance)', {})
+        cost += row.get('staff_loader', 0) * loader.get('daily_cost', 0)
 
-        cost += daily_white_collar_cost_fixed
+        # Electrician / Other Roles
+        for role_name in MASTER_DATA.get('ROLE_RATES', {}):
+            if role_name not in ['White Colar', 'Blue Collar (Attendance)', 'Loading & Unloading(Attendance)']:
+                role_data = MASTER_DATA['ROLE_RATES'][role_name]
+                field = 'staff_' + role_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
+                cost += row.get(field, 0) * role_data.get('daily_cost', 0)
+
+        # Adhoc / Vendor
+        adhoc_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Adhoc Manpower', 0)
+        cost += row.get('supervisor_vender', 0) * adhoc_rate
+
+        # Overtime
+        ot_supervisor_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Over Time -Supervisor/ Hr', 0)
+        ot_bc_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Over Time- Blue Collar/Hr', 0)
+        ot_loader_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Over Time- Blue Collar ( Loader/Hr)', 0)
+        cost += row.get('ot_supervisor_hrs', 0) * ot_supervisor_rate
+        cost += row.get('ot_blue_collar_hrs', 0) * ot_bc_rate
+        cost += row.get('ot_loader_hrs', 0) * ot_loader_rate
 
         return cost
 
-    df['cost_associate'] = df.apply(calculate_daily_labor_cost, axis=1)
+    df['Total Labor Cost'] = df.apply(labor_cost, axis=1)
 
-    # --- REVENUE CALCULATION (CORRECTED LOGIC APPLIED HERE) ---
+    # --- 2. TOTAL FIXED COST ---
+    fixed_cost_total = sum(MASTER_DATA.get('FIXED_COSTS', {}).values())
+    df['Total Fixed Cost'] = fixed_cost_total
+
+    # --- 3. TOTAL COST ---
+    df['Total Cost'] = df['Total Labor Cost'] + df['Total Fixed Cost']
+
+    # --- 4. Revenue ---
     storage_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Storage/Day/CBM', 0)
     outbound_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Outbound/CBM', 0)
+    df['Revenue'] = df.get('revenue_warehouse', 0) * storage_rate + df.get('revenue_freight', 0) * outbound_rate
 
-    # FIX: revenue_warehouse (storage quantity) is multiplied by storage_rate
-    # and revenue_freight (outbound quantity) is multiplied by outbound_rate
-    df['Revenue'] = (df['revenue_warehouse'].astype(np.float64) * storage_rate) + \
-                    (df['revenue_freight'].astype(np.float64) * outbound_rate)
-    # ----------------------------------------------------------------------------
+    # --- 5. Profit Calculations ---
+    df['Gross Profit'] = df['Revenue'] - df['Total Fixed Cost']
+    df['Net Profit'] = df['Revenue'] - df['Total Cost']
+    df['Net Profit Margin (%)'] = np.where(df['Revenue'] != 0, (df['Net Profit'] / df['Revenue']) * 100, 0)
 
-    rental_cost = MASTER_DATA.get('FIXED_COSTS', {}).get('Rental', 0)
-    daily_fixed_cost_rent = (rental_cost / 30)
+    # --- 6. Reset index for display ---
+    df.reset_index(inplace=True)
 
-    # P&L Logic Remains UNCHANGED
-    df['Total COGS'] = df['cost_associate'] + daily_fixed_cost_rent + df['cost_utilities']
-    df['Gross Profit'] = df['Revenue'] - df['Total COGS']
+    # --- 7. Add TOTAL row ---
+    totals = df[['Revenue', 'Total Labor Cost', 'Total Fixed Cost', 'Total Cost', 'Gross Profit', 'Net Profit']].sum()
+    total_margin = (totals['Net Profit'] / totals['Revenue'] * 100) if totals['Revenue'] else 0
 
-    df['Total OpEx'] = df['cost_admin'] + df['cost_it']
-    df['Net Profit'] = df['Gross Profit'] - df['Total OpEx']
+    total_row = pd.DataFrame([{
+        'Date': 'TOTAL',
+        'Revenue': totals['Revenue'],
+        'Total Labor Cost': totals['Total Labor Cost'],
+        'Total Fixed Cost': totals['Total Fixed Cost'],
+        'Total Cost': totals['Total Cost'],
+        'Gross Profit': totals['Gross Profit'],
+        'Net Profit': totals['Net Profit'],
+        'Net Profit Margin (%)': total_margin
+    }])
 
-    df['Net Profit Margin (%)'] = (df['Net Profit'] / df['Revenue']).fillna(0) * 100
+    df = pd.concat([df, total_row], ignore_index=True)
 
-    # =========================================================================
-    # --- Cost & Revenue Summary (Calculating Other Fixed Costs for Total Cost KPI) ---
-    # =========================================================================
-
-    # Calculate Other Fixed Costs (Non-P&L component of Other Charges)
-    other_fixed_monthly = MASTER_DATA.get('FIXED_COSTS', {}).get('House Keeping', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Guard Female', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Guard', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Security Supervisor', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('Capex', 0) + \
-                          MASTER_DATA.get('FIXED_COSTS', {}).get('R & R Cost', 0)
-
-    other_fixed_for_period = (other_fixed_monthly / 30) * len(df)
-
-    # --- Summary Population (Unchanged Logic) ---
-    summary = {}
-    summary['Revenue Outbound/CBM'] = (df['revenue_freight'].sum() * outbound_rate)
-    summary['Revenue Storage/Day/CBM'] = (df['revenue_warehouse'].sum() * storage_rate)
-    summary['White Colar'] = daily_white_collar_cost_fixed * len(df)
-
-    for role, rates in MASTER_DATA.get('ROLE_RATES', {}).items():
-        daily_cost = rates.get('daily_cost', 0)
-        field_name = 'staff_' + role.lower().replace(' ', '_').replace('(', '').replace(')', '')
-        if field_name in df.columns:
-            total_cost_for_role = (df[field_name].astype(np.float64) * daily_cost).sum()
-            summary[role] = total_cost_for_role
-
-    total_vender_supervisor_cost = (df['supervisor_vender'].astype(np.float64) * vendor_supervisor_daily_cost).sum()
-    summary['Supervisor ( vendors)'] = total_vender_supervisor_cost
-
-    total_opex_for_period = df['Total OpEx'].sum()
-
-    # Other Charges = Total OpEx (Admin/IT) + Other Fixed Costs
-    summary['Other Charges'] = total_opex_for_period + other_fixed_for_period
-
-    summary['Consumables'] = 0
-    summary['Adhoc Manpower'] = 0
-    summary['Holiday working'] = 0
-    summary['Over Time -Supervisor/ Hr'] = 0
-    summary['Over Time- Blue Collar/Hr'] = 0
-    summary['Over Time- Blue Collar ( Loader/Hr'] = 0
-
-    final_summary = {
-        'Revenue Outbound/CBM': summary.get('Revenue Outbound/CBM', 0),
-        'Revenue Storage/Day/CBM': summary.get('Revenue Storage/Day/CBM', 0),
-        'Holiday working': summary.get('Holiday working', 0),
-        'White Colar': summary.get('White Colar', 0),
-        'Blue Collar (Attendance)': summary.get('Blue Collar (Attendance)', 0),
-        'Loading & Unloading(Attendance)': summary.get('Loading & Unloading(Attendance)', 0),
-        'Adhoc Manpower': summary.get('Adhoc Manpower', 0),
-        'Over Time -Supervisor/ Hr': summary.get('Over Time -Supervisor/ Hr', 0),
-        'Over Time- Blue Collar/Hr': summary.get('Over Time- Blue Collar/Hr', 0),
-        'Over Time- Blue Collar ( Loader/Hr': summary.get('Over Time- Blue Collar ( Loader/Hr', 0),
-        'Electretion': summary.get('Electretion', 0),
-        'Supervisor ( vendors)': summary.get('Supervisor ( vendors)', 0),
-        'Other Charges': summary.get('Other Charges', 0),
-        'Consumables': summary.get('Consumables', 0)
-    }
-
-    total_revenue = df['Revenue'].sum()
-    total_net_profit = df['Net Profit'].sum()
-
-    # --- KEY CHANGE 1: Calculate Total Cost including Other Fixed Costs ---
-    total_cogs = df['Total COGS'].sum()
-    total_opex = df['Total OpEx'].sum()
-
-    # Total Cost = All COGS + All OpEx + Other Fixed Costs (Security, Housekeeping, etc.)
-    total_cost = total_cogs + total_opex + other_fixed_for_period
-
-    kpis = {
-        'total_revenue': total_revenue,
-        'total_net_profit': total_net_profit,
-        'avg_net_margin': round((total_net_profit / total_revenue) * 100, 2) if total_revenue and not math.isclose(
-            total_revenue, 0) else 0,
-        'cost_percentage': round((total_cost / total_revenue) * 100, 2) if total_revenue and not math.isclose(
-            total_revenue, 0) else 0,
-        # --- KEY CHANGE 2: Add Total Cost value to KPIs ---
-        'total_cost_value': total_cost,
-        'period_end_date': df.index[-1].strftime("%d-%b-%Y") if not df.empty else None,
-        'cost_revenue_summary': {k: round(v, 0) for k, v in final_summary.items()}
-    }
-
-    return df, kpis, filter_info
+    return df
 
 
+
+
+
+
+# ================= FLASK ROUTE =================
 @app.route('/', methods=['GET'])
 def index():
     fetch_master_data()
     fetch_daily_records()
 
-    preset = request.args.get('preset')
+    if not warehouse_data:
+        daily_table = "<p class='text-center text-warning mt-5'>No P&L data available.</p>"
+        return render_template('index.html', daily_table=daily_table)
+
+    df = pd.DataFrame(warehouse_data)
+
+    if 'entry_date' not in df.columns:
+        daily_table = "<p class='text-center text-warning mt-5'>No entry_date found in records.</p>"
+        return render_template('index.html', daily_table=daily_table)
+
+    # --- Date handling ---
+    df['Date'] = pd.to_datetime(df['entry_date'], errors='coerce')
+    df.dropna(subset=['Date'], inplace=True)
+    df.sort_values('Date', inplace=True)
+
+    # --- Date filter ---
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
-    df, kpis_data, filter_info = get_processed_data(preset, start_date, end_date)
+    if start_date:
+        df = df[df['Date'] >= pd.to_datetime(start_date)]
+    if end_date:
+        df = df[df['Date'] <= pd.to_datetime(end_date)]
 
     if df.empty:
-        if "Filter" in filter_info['status']:
-            empty_message = f"<p class='text-center mt-5 text-red-500 text-xl'>⚠️ No data found for the selected {filter_info['status']} range.</p>"
-        else:
-            empty_message = "<p class='text-center mt-5 text-gray-500 text-xl'>No data available. Please enter daily data from the Input form.</p>"
+        daily_table = "<p class='text-center text-warning mt-5'>No P&L data available for the selected period.</p>"
+        return render_template('index.html', daily_table=daily_table)
 
-        return render_template('index.html',
-                               kpis=None,
-                               pl_table=empty_message,
-                               filter_info=filter_info,
-                               active_preset=preset,
-                               active_start=start_date,
-                               active_end=end_date)
+    # --- 1. LABOR COST ---
+    total_labor_costs = []
 
-    kpis_display = {
-        'current_revenue': kpis_data['total_revenue'],
-        'net_profit': kpis_data['total_net_profit'],
-        'net_margin': kpis_data['avg_net_margin'],
-        'cost_percentage': kpis_data['cost_percentage'],
-        # --- KEY CHANGE 3: Pass Total Cost Value ---
-        'total_cost_value': kpis_data['total_cost_value'],
-        'period_end_date': kpis_data['period_end_date'],
-        'cost_revenue_summary': kpis_data.get('cost_revenue_summary')
-    }
+    def calc_labor_cost(row):
+        cost = 0
+        # White Collar
+        wc_salary = MASTER_DATA.get('ROLE_RATES', {}).get('White Colar', {}).get('daily_cost', 0)
+        cost += wc_salary
 
-    # --- P&L Table Column Names (COST_ASSOCIATE is P&L Labor cost, we keep it for calculation) ---
-    display_cols = ['Revenue', 'cost_associate', 'Total COGS', 'Gross Profit', 'Total OpEx', 'Net Profit',
-                    'Net Profit Margin (%)']
+        # Other roles dynamically
+        for role_name, rate_data in MASTER_DATA.get('ROLE_RATES', {}).items():
+            field = 'staff_' + role_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
+            if field in row:
+                cost += row[field] * rate_data.get('daily_cost', 0)
 
-    totals = df[display_cols].sum(numeric_only=True)
+        # Vendor/Adhoc
+        vendor_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Adhoc Manpower Rate', 0)
+        cost += row.get('supervisor_vender', 0) * vendor_rate
 
-    total_revenue = totals['Revenue']
-    total_net_profit = totals['Net Profit']
-    total_net_margin = (total_net_profit / total_revenue) * 100 if total_revenue else 0
+        # Overtime
+        ot_sup_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Over Time -Supervisor/ Hr', 0)
+        ot_bc_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Over Time- Blue Collar/Hr', 0)
+        ot_loader_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Over Time- Blue Collar ( Loader/Hr)', 0)
+        cost += row.get('ot_supervisor_hrs', 0) * ot_sup_rate
+        cost += row.get('ot_blue_collar_hrs', 0) * ot_bc_rate
+        cost += row.get('ot_loader_hrs', 0) * ot_loader_rate
 
-    total_row = {
+        return cost
+
+    df['Total Labor Cost'] = df.apply(calc_labor_cost, axis=1)
+
+    # --- 2. FIXED COSTS ---
+    fixed_cost_total = sum(MASTER_DATA.get('FIXED_COSTS', {}).values())
+    df['Total Fixed Cost'] = fixed_cost_total
+
+    # --- 3. TOTAL COST ---
+    df['Total Cost'] = df['Total Labor Cost'] + df['Total Fixed Cost']
+
+    # --- 4. REVENUE ---
+    storage_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Storage/Day/CBM', 0)
+    outbound_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Outbound/CBM', 0)
+    df['Revenue'] = df.get('revenue_warehouse', 0) * storage_rate + df.get('revenue_freight', 0) * outbound_rate
+
+    # --- 5. Gross & Net Profit ---
+    df['Gross Profit'] = df['Revenue'] - df['Total Fixed Cost']
+    df['Net Profit'] = df['Revenue'] - df['Total Cost']
+    df['Net Profit Margin (%)'] = np.where(df['Revenue'] != 0, (df['Net Profit'] / df['Revenue']) * 100, 0)
+
+    # --- 6. Prepare display ---
+    display_cols = ['Date', 'Revenue', 'Total Labor Cost', 'Total Fixed Cost', 'Total Cost',
+                    'Gross Profit', 'Net Profit', 'Net Profit Margin (%)']
+    df_display = df[display_cols].copy()
+
+    # Format date safely
+    df_display['Date'] = df_display['Date'].apply(lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else '')
+
+    # Add TOTAL row
+    totals = df_display[['Revenue', 'Total Labor Cost', 'Total Fixed Cost', 'Total Cost', 'Gross Profit', 'Net Profit']].sum()
+    total_margin = (totals['Net Profit'] / totals['Revenue'] * 100) if totals['Revenue'] else 0
+    total_row = pd.DataFrame([{
         'Date': 'TOTAL',
-        'Revenue': f'₹{totals["Revenue"]:,.0f}',
-        'cost_associate': f'₹{totals["cost_associate"]:,.0f}',
-        'Total COGS': f'₹{totals["Total COGS"]:,.0f}',
-        'Gross Profit': f'₹{totals["Gross Profit"]:,.0f}',
-        'Total OpEx': f'₹{totals["Total OpEx"]:,.0f}',
-        'Net Profit': f'₹{totals["Net Profit"]:,.0f}',
-        'Net Profit Margin (%)': f'{total_net_margin:.2f}%'
-    }
+        'Revenue': totals['Revenue'],
+        'Total Labor Cost': totals['Total Labor Cost'],
+        'Total Fixed Cost': totals['Total Fixed Cost'],
+        'Total Cost': totals['Total Cost'],
+        'Gross Profit': totals['Gross Profit'],
+        'Net Profit': totals['Net Profit'],
+        'Net Profit Margin (%)': total_margin
+    }])
+    df_display = pd.concat([df_display, total_row], ignore_index=True)
 
-    df_display = df.reset_index()
-    df_display['Date'] = df_display['Date'].dt.strftime('%Y-%m-%d')
+    # --- 7. Convert to HTML ---
+    daily_table = df_display.to_html(classes="table table-striped table-hover", index=False,
+                                     float_format=lambda x: f'₹{x:,.0f}' if isinstance(x, (int, float)) else x)
 
-    pl_data_html = df_display[['Date'] + display_cols].to_html(classes='table table-striped table-hover',
-                                                               index=False,
-                                                               float_format=lambda
-                                                                   x: f'₹{x:,.0f}' if 'Revenue' in df.columns or abs(
-                                                                   x) > 1 else f'{x:.2f}%')
+    return render_template('index.html', daily_table=daily_table)
 
-    total_row_html = f"""
-    <tr class="bg-indigo-100 font-bold text-indigo-800">
-        <td>TOTAL</td>
-        <td>{total_row['Revenue']}</td>
-        <td>{total_row['cost_associate']}</td>
-        <td>{total_row['Total COGS']}</td>
-        <td>{total_row['Gross Profit']}</td>
-        <td>{total_row['Total OpEx']}</td>
-        <td>{total_row['Net Profit']}</td>
-        <td>{total_row['Net Profit Margin (%)']}</td>
-    </tr>
-    """
 
-    pl_data_html = pl_data_html.replace('</tbody>', total_row_html + '</tbody>')
 
-    return render_template('index.html',
-                           kpis=kpis_display,
-                           pl_table=pl_data_html,
-                           filter_info=filter_info,
-                           active_start=start_date,
-                           active_end=end_date,
-                           active_preset=preset)
 
 
 @app.route('/input', methods=['GET', 'POST'])
-# ... (input_data function remains UNCHANGED) ...
 def input_data():
     global MASTER_DATA
 
     fetch_master_data()
     today = datetime.date.today().isoformat()
+
+    # Only roles with 'daily_cost' defined
     labor_master_for_input = {k: v for k, v in MASTER_DATA.get('ROLE_RATES', {}).items() if 'daily_cost' in v}
     form_data = {}
 
@@ -501,23 +450,23 @@ def input_data():
             input_date = datetime.datetime.strptime(input_date_str, '%Y-%m-%d').date()
 
             with app.app_context():
-                record = DailyRecords.query.get(input_date)
+                record = DailyRecords.query.filter_by(entry_date=input_date).first()
                 if not record:
-                    record = DailyRecords(date=input_date)
+                    record = DailyRecords(entry_date=input_date)
 
-                record.revenue_warehouse = float(request.form.get('revenue_warehouse') or 0.0)
-                record.revenue_freight = float(request.form.get('revenue_freight') or 0.0)
-                record.cost_rent = float(request.form.get('cost_rent') or 0.0)
-                record.cost_utilities = float(request.form.get('cost_utilities') or 0.0)
-                record.cost_admin = float(request.form.get('cost_admin') or 0.0)
-                record.cost_it = float(request.form.get('cost_it') or 0.0)
-                record.supervisor_vender = int(request.form.get('supervisor_vender') or 0)
-                record.staff_adhoc_manpower = int(request.form.get('staff_adhoc_manpower') or 0)
+                # --- Automatically map all fields from form to model ---
+                for column in DailyRecords.__table__.columns:
+                    col_name = column.name
+                    if col_name in ['id', 'entry_date', 'created_at']:
+                        continue  # Skip primary key, date, timestamps
 
-                for role in MASTER_DATA.get('ROLE_RATES', {}).keys():
-                    field_name = 'staff_' + role.lower().replace(' ', '_').replace('(', '').replace(')', '')
-                    if hasattr(record, field_name):
-                        setattr(record, field_name, int(request.form.get(field_name) or 0))
+                    form_value = request.form.get(col_name)
+                    if form_value is not None:
+                        # Determine column type and convert
+                        if isinstance(column.type, (db.Integer, db.Float, db.Numeric)):
+                            setattr(record, col_name, float(form_value) if form_value else 0)
+                        else:
+                            setattr(record, col_name, form_value)
 
                 db.session.add(record)
                 db.session.commit()
@@ -543,13 +492,21 @@ def input_data():
                            labor_master=labor_master_for_input,
                            form_data=form_data)
 
-
 @app.route('/master_data', methods=['GET', 'POST'])
-# ... (master_data_ui function remains UNCHANGED) ...
-def master_data_ui():
+def master_data():
     global MASTER_DATA
 
+    # Load latest master data from DB
     fetch_master_data()
+
+    # Ensure all keys exist to avoid Jinja UndefinedError
+    expected_keys = [
+        'ROLE_RATES', 'EMPLOYEE_SALARIES', 'FIXED_COSTS',
+        'REVENUE_RATES', 'CONSUMABLE_RATES', 'ADHOC_RATES'
+    ]
+    for key in expected_keys:
+        if key not in MASTER_DATA:
+            MASTER_DATA[key] = {}
 
     if request.method == 'POST':
         category = request.form.get('category')
@@ -610,7 +567,7 @@ def master_data_ui():
 
                         employee = EmployeeSalaries.query.get(emp_code)
                         if employee:
-                            base_salary = float(employee.base_salary)
+                            base_salary = float(employee.base_salary or 0.0)
                             adjusted_salary = calculate_adjusted_salary(base_salary, new_rating)
 
                             employee.monthly_rating = new_rating
@@ -621,7 +578,7 @@ def master_data_ui():
                         emp_code = request.form.get('emp_code')
                         EmployeeSalaries.query.filter_by(emp_code=emp_code).delete()
 
-                # --- 3-6. FIXED/CONSUMABLE/REVENUE/ADHOC RATES ---
+                # --- 3-6. FIXED / CONSUMABLE / REVENUE / ADHOC RATES ---
                 rate_categories = {
                     'fixed_costs': (FixedCosts, 'cost_name', 'cost_value'),
                     'consumable_rates': (ConsumableRates, 'item_name', 'unit_rate'),
@@ -635,12 +592,10 @@ def master_data_ui():
 
                     if action in ['update_existing', 'add_new']:
                         rate_name = request.form.get(
-                            f'{key_col}_to_update') if action == 'update_existing' else request.form.get(
-                            f'new_{key_col}')
+                            f'{key_col}_to_update') if action == 'update_existing' else request.form.get(f'new_{key_col}')
                         if rate_name:
                             record = Model.query.get(rate_name)
                             if not record: record = Model(**{key_col: rate_name})
-
                             setattr(record, value_col, rate_value)
                             db.session.add(record)
 
@@ -651,6 +606,7 @@ def master_data_ui():
                 db.session.commit()
                 flash('✅ Master Data updated successfully!', 'success')
 
+            # Refresh MASTER_DATA after DB changes
             fetch_master_data()
 
         except ValueError:
@@ -660,10 +616,12 @@ def master_data_ui():
             db.session.rollback()
             flash(f'An unexpected database error occurred: {e}', 'danger')
 
-        return redirect(url_for('master_data_ui'))
+        return redirect(url_for('master_data'))
 
+    # GET request
     fetch_master_data()
     return render_template('master_data.html', master_data=MASTER_DATA)
+
 
 
 @app.route('/simulate', methods=['POST'])
