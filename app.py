@@ -111,6 +111,17 @@ class RevenueRates(db.Model):
     rate_name = db.Column(db.String(100), primary_key=True)
     rate_value = db.Column(db.Numeric(10, 2), nullable=False)
 
+class ConsumableRates(db.Model):
+    __tablename__ = 'consumable_rates'
+    item_name = db.Column(db.String(100), primary_key=True)
+    unit_rate = db.Column(db.Numeric(10, 2), nullable=False)
+
+class AdhocRates(db.Model):
+    __tablename__ = 'adhoc_rates'
+    rate_name = db.Column(db.String(100), primary_key=True)
+    rate_value = db.Column(db.Numeric(10, 2), nullable=False)
+
+
 # ==========================
 # --- FETCH FUNCTIONS ---
 # ==========================
