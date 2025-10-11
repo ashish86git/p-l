@@ -428,10 +428,6 @@ def index():
 
     return render_template('index.html', daily_table=daily_table)
 
-
-
-
-
 @app.route('/input', methods=['GET', 'POST'])
 def input_data():
     global MASTER_DATA
@@ -515,29 +511,53 @@ def master_data():
         try:
             with app.app_context():
 
-                # --- 1. ROLE RATES ---
+                # ==================== 1. ROLE RATES ====================
                 if category == 'role_rates':
-                    role_name = request.form.get(
-                        'role_name_to_update') if action == 'update_existing' else request.form.get('new_role_name')
+                    role_name = (
+                        request.form.get('role_name_to_update')
+                        if action == 'update_existing'
+                        else request.form.get('new_role_name')
+                    )
 
                     if action in ['update_existing', 'add_new']:
                         monthly_salary = float(request.form.get('monthly_salary') or 0.0)
                         description = request.form.get('description')
-                        daily_cost = round(monthly_salary / 30, 2)
 
-                        role = RoleRates.query.get(role_name)
-                        if not role: role = RoleRates(role_name=role_name)
+                        # --- Divisor logic (based on role type) ---
+                        divisor = 30
+                        if role_name:
+                            name_lower = role_name.lower()
+                            if any(k in name_lower for k in ['blue', 'loader', 'unloading', 'electrician']):
+                                divisor = 26
+                            elif 'white' in name_lower:
+                                divisor = 30
+
+                        daily_cost = round(monthly_salary / divisor, 2)
+
+                        # --- Insert or Update Role ---
+                        role = RoleRates.query.filter_by(role_name=role_name).first()
+                        if not role:
+                            role = RoleRates(role_name=role_name)
 
                         role.monthly_salary = monthly_salary
                         role.daily_cost = daily_cost
                         role.description = description
-                        db.session.add(role)
+
+                        db.session.merge(role)  # merge ensures both add/update
+                        db.session.commit()
+                        flash(f'✅ Role "{role_name}" saved successfully!', 'success')
 
                     elif action == 'delete':
                         role_name = request.form.get('role_name')
-                        RoleRates.query.filter_by(role_name=role_name).delete()
+                        if role_name:
+                            deleted = RoleRates.query.filter_by(role_name=role_name).delete()
+                            db.session.commit()
+                            if deleted:
+                                flash(f'🗑️ Role "{role_name}" deleted successfully.', 'success')
+                            else:
+                                flash(f'⚠️ Role "{role_name}" not found for deletion.', 'warning')
 
-                # --- 2. EMPLOYEE SALARIES ---
+                # ==================== 2. EMPLOYEE SALARIES ====================
                 elif category == 'employee_salaries':
                     if action == 'add_or_update':
                         emp_code = request.form.get('emp_code')
@@ -547,19 +567,25 @@ def master_data():
                             role_name = request.form.get('role')
 
                             employee = EmployeeSalaries.query.get(emp_code)
-                            initial_rating = float(
-                                employee.monthly_rating) if employee and employee.monthly_rating is not None else 3.5
+                            initial_rating = (
+                                float(employee.monthly_rating)
+                                if employee and employee.monthly_rating is not None
+                                else 3.5
+                            )
 
                             adjusted_salary = calculate_adjusted_salary(base_salary, initial_rating)
 
-                            if not employee: employee = EmployeeSalaries(emp_code=emp_code)
+                            if not employee:
+                                employee = EmployeeSalaries(emp_code=emp_code)
 
                             employee.name = name
                             employee.base_salary = base_salary
                             employee.role = role_name
                             employee.monthly_rating = initial_rating
                             employee.adjusted_salary = adjusted_salary
-                            db.session.add(employee)
+                            db.session.merge(employee)
+                            db.session.commit()
+                            flash(f'✅ Employee "{name}" saved successfully!', 'success')
 
                     elif action == 'update_rating':
                         emp_code = request.form.get('emp_code_rating')
@@ -569,16 +595,21 @@ def master_data():
                         if employee:
                             base_salary = float(employee.base_salary or 0.0)
                             adjusted_salary = calculate_adjusted_salary(base_salary, new_rating)
-
                             employee.monthly_rating = new_rating
                             employee.adjusted_salary = adjusted_salary
-                            db.session.add(employee)
+                            db.session.commit()
+                            flash(f'⭐ Rating updated for employee {emp_code}.', 'success')
 
                     elif action == 'delete':
                         emp_code = request.form.get('emp_code')
-                        EmployeeSalaries.query.filter_by(emp_code=emp_code).delete()
+                        deleted = EmployeeSalaries.query.filter_by(emp_code=emp_code).delete()
+                        db.session.commit()
+                        if deleted:
+                            flash(f'🗑️ Employee "{emp_code}" deleted successfully.', 'success')
+                        else:
+                            flash(f'⚠️ Employee "{emp_code}" not found.', 'warning')
 
-                # --- 3-6. FIXED / CONSUMABLE / REVENUE / ADHOC RATES ---
+                # ==================== 3-6. FIXED / CONSUMABLE / REVENUE / ADHOC RATES ====================
                 rate_categories = {
                     'fixed_costs': (FixedCosts, 'cost_name', 'cost_value'),
                     'consumable_rates': (ConsumableRates, 'item_name', 'unit_rate'),
@@ -588,39 +619,50 @@ def master_data():
 
                 if category in rate_categories:
                     Model, key_col, value_col = rate_categories[category]
-                    rate_value = float(request.form.get('cost_value') or request.form.get('rate_value') or 0.0)
+                    rate_value = float(
+                        request.form.get('cost_value') or request.form.get('rate_value') or 0.0
+                    )
 
                     if action in ['update_existing', 'add_new']:
-                        rate_name = request.form.get(
-                            f'{key_col}_to_update') if action == 'update_existing' else request.form.get(f'new_{key_col}')
+                        rate_name = (
+                            request.form.get(f'{key_col}_to_update')
+                            if action == 'update_existing'
+                            else request.form.get(f'new_{key_col}')
+                        )
                         if rate_name:
-                            record = Model.query.get(rate_name)
-                            if not record: record = Model(**{key_col: rate_name})
+                            record = Model.query.filter_by(**{key_col: rate_name}).first()
+                            if not record:
+                                record = Model(**{key_col: rate_name})
                             setattr(record, value_col, rate_value)
-                            db.session.add(record)
+                            db.session.merge(record)
+                            db.session.commit()
+                            flash(f'✅ {category.replace("_", " ").title()} "{rate_name}" saved.', 'success')
 
                     elif action == 'delete':
                         rate_name = request.form.get(key_col)
-                        Model.query.filter_by(**{key_col: rate_name}).delete()
-
-                db.session.commit()
-                flash('✅ Master Data updated successfully!', 'success')
+                        deleted = Model.query.filter_by(**{key_col: rate_name}).delete()
+                        db.session.commit()
+                        if deleted:
+                            flash(f'🗑️ {category.replace("_", " ").title()} "{rate_name}" deleted.', 'success')
+                        else:
+                            flash(f'⚠️ {category.replace("_", " ").title()} "{rate_name}" not found.', 'warning')
 
             # Refresh MASTER_DATA after DB changes
             fetch_master_data()
 
         except ValueError:
             db.session.rollback()
-            flash('Error: Please ensure only numeric values are entered for Rate or Salary.', 'danger')
+            flash('❌ Please ensure only numeric values are entered for Rate or Salary.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'An unexpected database error occurred: {e}', 'danger')
+            flash(f'⚠️ Unexpected error occurred: {e}', 'danger')
 
         return redirect(url_for('master_data'))
 
     # GET request
     fetch_master_data()
     return render_template('master_data.html', master_data=MASTER_DATA)
+
 
 
 
