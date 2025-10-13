@@ -337,7 +337,9 @@ def index():
     if not warehouse_data:
         return render_template(
             'index.html',
-            daily_table="<p class='text-center text-warning mt-5'>No P&L data available.</p>"
+            daily_table="<p class='text-center text-warning mt-5'>No P&L data available.</p>",
+            detailed_table="",
+            totals=None
         )
 
     df = pd.DataFrame(warehouse_data)
@@ -345,7 +347,9 @@ def index():
     if 'entry_date' not in df.columns:
         return render_template(
             'index.html',
-            daily_table="<p class='text-center text-warning mt-5'>No entry_date found in records.</p>"
+            daily_table="<p class='text-center text-warning mt-5'>No entry_date found in records.</p>",
+            detailed_table="",
+            totals=None
         )
 
     # --- Date Handling ---
@@ -367,10 +371,12 @@ def index():
     if df.empty:
         return render_template(
             'index.html',
-            daily_table="<p class='text-center text-warning mt-5'>No P&L data available for the selected period.</p>"
+            daily_table="<p class='text-center text-warning mt-5'>No P&L data available for the selected period.</p>",
+            detailed_table="",
+            totals=None
         )
 
-    # --- Load Master Rates ---
+    # --- Master Rates ---
     revenue_rates = MASTER_DATA.get('REVENUE_RATES', {})
     adhoc_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Adhoc Manpower Rate', 0)
     storage_rate = revenue_rates.get('Storage/Day/CBM', 0)
@@ -379,10 +385,9 @@ def index():
     ot_bc_rate = revenue_rates.get('Over Time- Blue Collar/Hr', 0)
     ot_loader_rate = revenue_rates.get('Over Time- Blue Collar ( Loader/Hr)', 0)
 
-    # --- Load Role Rates from DB ---
     role_rates_db = {r.role_name: float(r.daily_cost) for r in RoleRates.query.all()}
 
-    # --- Calculate Variable Revenue ---
+    # --- Variable Revenue ---
     def calc_variable_revenue(row):
         ot_revenue = (
             row.get('ot_supervisor_hrs', 0) * ot_sup_rate +
@@ -402,19 +407,33 @@ def index():
         return ot_revenue + ot_related + freight_revenue + vendor_revenue
 
     df['Variable Revenue'] = df.apply(calc_variable_revenue, axis=1)
-
-    # --- Total Revenue ---
     df['Revenue'] = df['Variable Revenue'] + df.get('revenue_warehouse', 0) * storage_rate
 
     # --- Total Staff Cost ---
     def calc_labor_cost(row):
-        cost = 0
         cost = 8784  # Fixed White Colar
-        # cost += row.get('staff_supervisor', 0) * role_rates_db.get('White Colar', 0)
         cost += row.get('staff_blue_collar', 0) * role_rates_db.get('Blue Collar (Attendance)', 0)
         cost += row.get('staff_loader', 0) * role_rates_db.get('Loading & Unloading(Attendance)', 0)
         cost += row.get('staff_electrician', 0) * role_rates_db.get('Electretion', 0)
-        # cost += row.get('supervisor_vender', 0) * adhoc_rate
+        cost += row.get('supervisor_vender', 0)
+
+        ot_cost = (
+            row.get('ot_supervisor_hrs', 0) * ot_sup_rate +
+            row.get('ot_blue_collar_hrs', 0) * ot_bc_rate +
+            row.get('ot_loader_hrs', 0) * ot_loader_rate
+        )
+        vendor_cost = row.get('supervisor_vender', 0) * adhoc_rate
+
+        ot_related = (
+            row.get('cost_sunday_sup', 0) +
+            row.get('cost_sunday_bc', 0) +
+            row.get('cost_holiday_mgmt', 0) +
+            row.get('cost_other_charges', 0) +
+            row.get('cost_tea', 0) +
+            row.get('cost_staff_welfare', 0)
+        )
+
+        cost += ot_cost + vendor_cost + ot_related
         return cost
 
     df['Total Staff Cost'] = df.apply(calc_labor_cost, axis=1)
@@ -423,61 +442,84 @@ def index():
     cost_fields = [c for c in df.columns if c.startswith('cost_')]
     df['Other Costs'] = df[cost_fields].sum(axis=1)
 
-    # --- Consumables ---
     consumables_list = [
-        'consumable_roll_100x150',
-        'consumable_roll_75x50',
-        'consumable_roll_25x50',
-        'consumable_a4_paper',
+        'consumable_roll_100x150', 'consumable_roll_75x50',
+        'consumable_roll_25x50', 'consumable_a4_paper',
         'consumable_ribbon_25x50'
     ]
     for item in consumables_list:
         rate = MASTER_DATA.get('CONSUMABLE_RATES', {}).get(item, 0)
         df['Other Costs'] += df.get(item, 0) * rate
 
-    # --- Total Cost ---
     df['Total Cost'] = df['Total Staff Cost'] + df['Other Costs']
-
-    # --- Profit Calculations ---
     df['Gross Profit'] = df['Revenue'] - df['Total Staff Cost']
     df['Net Profit'] = df['Revenue'] - df['Total Cost']
-    df['Net Profit Margin (%)'] = np.where(df['Revenue'] != 0,
-                                           (df['Net Profit'] / df['Revenue']) * 100, 0)
+    df['Net Profit Margin (%)'] = np.where(df['Revenue'] != 0, (df['Net Profit']/df['Revenue'])*100, 0)
 
-    # --- Display Table ---
-    display_cols = [
-        'Date', 'Variable Revenue', 'Revenue',
-        'Total Staff Cost', 'Total Cost',
-        'Gross Profit', 'Net Profit', 'Net Profit Margin (%)'
-    ]
+    # --- Daily Table ---
+    display_cols = ['Date','Variable Revenue','Revenue','Total Staff Cost','Total Cost','Gross Profit','Net Profit','Net Profit Margin (%)']
     df_display = df[display_cols].copy()
     df_display['Date'] = df_display['Date'].dt.strftime('%Y-%m-%d')
 
-    # --- Totals Row ---
-    totals = df_display[['Variable Revenue', 'Revenue', 'Total Staff Cost',
-                         'Total Cost', 'Gross Profit', 'Net Profit']].sum()
-    total_margin = (totals['Net Profit'] / totals['Revenue'] * 100) if totals['Revenue'] else 0
+    totals = df_display[['Variable Revenue','Revenue','Total Staff Cost','Total Cost','Gross Profit','Net Profit']].sum()
+    total_margin = (totals['Net Profit']/totals['Revenue']*100) if totals['Revenue'] else 0
 
     total_row = pd.DataFrame([{
-        'Date': 'TOTAL',
-        'Variable Revenue': totals['Variable Revenue'],
-        'Revenue': totals['Revenue'],
-        'Total Staff Cost': totals['Total Staff Cost'],
-        'Total Cost': totals['Total Cost'],
-        'Gross Profit': totals['Gross Profit'],
-        'Net Profit': totals['Net Profit'],
-        'Net Profit Margin (%)': total_margin
+        'Date':'TOTAL',
+        'Variable Revenue':totals['Variable Revenue'],
+        'Revenue':totals['Revenue'],
+        'Total Staff Cost':totals['Total Staff Cost'],
+        'Total Cost':totals['Total Cost'],
+        'Gross Profit':totals['Gross Profit'],
+        'Net Profit':totals['Net Profit'],
+        'Net Profit Margin (%)':total_margin
     }])
-    df_display = pd.concat([df_display, total_row], ignore_index=True)
+    df_display = pd.concat([df_display,total_row], ignore_index=True)
 
-    # --- Convert Table to HTML ---
     daily_table = df_display.to_html(
         classes="table table-striped table-hover align-middle text-center shadow-sm rounded",
         index=False,
-        float_format=lambda x: f'₹{x:,.2f}' if isinstance(x, (int, float)) else x
+        table_id="daily_table",
+        float_format=lambda x: f'₹{x:,.2f}' if isinstance(x,(int,float)) else x
     )
 
-    # --- Summary Cards ---
+    # --- Detailed Table ---
+    details_list=[]
+    for _, row in df.iterrows():
+        date_str = row['Date'].strftime('%d/%m/%Y')
+        details_list.append({'Date': date_str, 'Attributes':'Outbound/CBM', 'Cost':'', 'Revenue':row.get('revenue_freight',0)*outbound_rate})
+        details_list.append({'Date': date_str, 'Attributes':'Storage/Day/CBM', 'Cost':'', 'Revenue':row.get('revenue_warehouse',0)*storage_rate})
+        details_list.append({'Date': date_str, 'Attributes':'Holiday working', 'Cost':row.get('cost_holiday_mgmt',0), 'Revenue':''})
+        details_list.append({'Date': date_str, 'Attributes':'White Colar', 'Cost':8784, 'Revenue':''})
+        details_list.append({'Date': date_str, 'Attributes':'Blue Collar (Attendance)', 'Cost':row.get('staff_blue_collar',0)*role_rates_db.get('Blue Collar (Attendance)',0), 'Revenue':''})
+        details_list.append({'Date': date_str, 'Attributes':'Loading & Unloading(Attendance)', 'Cost':row.get('staff_loader',0)*role_rates_db.get('Loading & Unloading(Attendance)',0), 'Revenue':''})
+        details_list.append({'Date': date_str, 'Attributes':'Adhoc Manpower', 'Cost':row.get('supervisor_vender',0)*adhoc_rate, 'Revenue':row.get('supervisor_vender',0)*adhoc_rate})
+        details_list.append({'Date': date_str, 'Attributes':'Over Time -Supervisor/ Hr', 'Cost':row.get('ot_supervisor_hrs',0)*ot_sup_rate, 'Revenue':row.get('ot_supervisor_hrs',0)*ot_sup_rate})
+        details_list.append({'Date': date_str, 'Attributes':'Over Time- Blue Collar/Hr', 'Cost':row.get('ot_blue_collar_hrs',0)*ot_bc_rate, 'Revenue':row.get('ot_blue_collar_hrs',0)*ot_bc_rate})
+        details_list.append({'Date': date_str, 'Attributes':'Over Time- Blue Collar ( Loader/Hr', 'Cost':row.get('ot_loader_hrs',0)*ot_loader_rate, 'Revenue':row.get('ot_loader_hrs',0)*ot_loader_rate})
+        details_list.append({'Date': date_str, 'Attributes':'Electretion', 'Cost':row.get('staff_electrician',0)*role_rates_db.get('Electretion',0), 'Revenue':''})
+        details_list.append({'Date': date_str, 'Attributes':'Supervisor ( vendors)', 'Cost':row.get('supervisor_vender',0), 'Revenue':''})
+
+        ot_related = (
+            row.get('cost_sunday_sup',0)+row.get('cost_sunday_bc',0)+row.get('cost_holiday_mgmt',0)+
+            row.get('cost_other_charges',0)+row.get('cost_tea',0)+row.get('cost_staff_welfare',0)
+        )
+        details_list.append({'Date': date_str, 'Attributes':'Other Charges','Cost':ot_related,'Revenue':''})
+
+        consumable_cost=0
+        for item in ['consumable_roll_100x150','consumable_roll_75x50','consumable_roll_25x50','consumable_a4_paper','consumable_ribbon_25x50']:
+            rate = MASTER_DATA.get('CONSUMABLE_RATES',{}).get(item,0)
+            consumable_cost += row.get(item,0)*rate
+        details_list.append({'Date': date_str,'Attributes':'Consumables','Cost':consumable_cost,'Revenue':''})
+
+    df_details = pd.DataFrame(details_list)
+    detailed_table = df_details.to_html(
+        classes="table table-sm table-bordered text-center align-middle shadow-sm mt-4",
+        index=False,
+        table_id="detailed_table",
+        float_format=lambda x: f'₹{x:,.0f}' if isinstance(x,(int,float)) and x != 0 else ('' if x==0 else x)
+    )
+
     totals_dict = {
         'Variable_Revenue': f"₹{totals['Variable Revenue']:,.2f}",
         'Revenue': f"₹{totals['Revenue']:,.2f}",
@@ -487,15 +529,15 @@ def index():
         'Net_Margin': f"{total_margin:.2f}%"
     }
 
-    # --- Quick filter dates ---
     today = pd.Timestamp.today().strftime('%Y-%m-%d')
-    week_start = (pd.Timestamp.today() - pd.Timedelta(days=pd.Timestamp.today().weekday())).strftime('%Y-%m-%d')
+    week_start = (pd.Timestamp.today()-pd.Timedelta(days=pd.Timestamp.today().weekday())).strftime('%Y-%m-%d')
     month_start = pd.Timestamp.today().replace(day=1).strftime('%Y-%m-%d')
-    year_start = pd.Timestamp.today().replace(month=1, day=1).strftime('%Y-%m-%d')
+    year_start = pd.Timestamp.today().replace(month=1,day=1).strftime('%Y-%m-%d')
 
     return render_template(
         'index.html',
         daily_table=daily_table,
+        detailed_table=detailed_table,
         totals=totals_dict,
         today=today,
         week_start=week_start,
