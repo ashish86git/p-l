@@ -40,6 +40,7 @@ class DailyRecords(db.Model):
     staff_supervisor = db.Column(db.Integer, default=0)
     staff_blue_collar = db.Column(db.Integer, default=0)
     staff_loader = db.Column(db.Integer, default=0)
+    staff_electrician = db.Column(db.Integer, default=0)
     supervisor_vender = db.Column(db.Integer, default=0)
     staff_adhoc_manpower = db.Column(db.Integer, default=0)
     ot_supervisor_hrs = db.Column(db.Float, default=0.0)
@@ -325,107 +326,143 @@ def calculate_daily_pl_summary():
 
 
 
-
-
-
-# ================= FLASK ROUTE =================
+# ==================== FLASK ROUTE ====================
+# ==================== FLASK ROUTE ====================
 @app.route('/', methods=['GET'])
 def index():
     fetch_master_data()
     fetch_daily_records()
 
+    # --- Handle empty data ---
     if not warehouse_data:
-        daily_table = "<p class='text-center text-warning mt-5'>No P&L data available.</p>"
-        return render_template('index.html', daily_table=daily_table)
+        return render_template(
+            'index.html',
+            daily_table="<p class='text-center text-warning mt-5'>No P&L data available.</p>"
+        )
 
     df = pd.DataFrame(warehouse_data)
 
     if 'entry_date' not in df.columns:
-        daily_table = "<p class='text-center text-warning mt-5'>No entry_date found in records.</p>"
-        return render_template('index.html', daily_table=daily_table)
+        return render_template(
+            'index.html',
+            daily_table="<p class='text-center text-warning mt-5'>No entry_date found in records.</p>"
+        )
 
-    # --- Date handling ---
+    # --- Date Handling ---
     df['Date'] = pd.to_datetime(df['entry_date'], errors='coerce')
     df.dropna(subset=['Date'], inplace=True)
     df.sort_values('Date', inplace=True)
 
-    # --- Date filter ---
+    # --- Date Filter ---
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    show_all = request.args.get('show_all')
 
-    if start_date:
-        df = df[df['Date'] >= pd.to_datetime(start_date)]
-    if end_date:
-        df = df[df['Date'] <= pd.to_datetime(end_date)]
+    if show_all != "1":
+        if start_date:
+            df = df[df['Date'] >= pd.to_datetime(start_date)]
+        if end_date:
+            df = df[df['Date'] <= pd.to_datetime(end_date)]
 
     if df.empty:
-        daily_table = "<p class='text-center text-warning mt-5'>No P&L data available for the selected period.</p>"
-        return render_template('index.html', daily_table=daily_table)
+        return render_template(
+            'index.html',
+            daily_table="<p class='text-center text-warning mt-5'>No P&L data available for the selected period.</p>"
+        )
 
-    # --- 1. LABOR COST ---
-    total_labor_costs = []
+    # --- Load Master Rates ---
+    revenue_rates = MASTER_DATA.get('REVENUE_RATES', {})
+    adhoc_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Adhoc Manpower Rate', 0)
+    storage_rate = revenue_rates.get('Storage/Day/CBM', 0)
+    outbound_rate = revenue_rates.get('Outbound/CBM', 0)
+    ot_sup_rate = revenue_rates.get('Over Time -Supervisor/ Hr', 0)
+    ot_bc_rate = revenue_rates.get('Over Time- Blue Collar/Hr', 0)
+    ot_loader_rate = revenue_rates.get('Over Time- Blue Collar ( Loader/Hr)', 0)
 
+    # --- Load Role Rates from DB ---
+    role_rates_db = {r.role_name: float(r.daily_cost) for r in RoleRates.query.all()}
+
+    # --- Calculate Variable Revenue ---
+    def calc_variable_revenue(row):
+        ot_revenue = (
+            row.get('ot_supervisor_hrs', 0) * ot_sup_rate +
+            row.get('ot_blue_collar_hrs', 0) * ot_bc_rate +
+            row.get('ot_loader_hrs', 0) * ot_loader_rate
+        )
+        ot_related = (
+            row.get('cost_sunday_sup', 0) +
+            row.get('cost_sunday_bc', 0) +
+            row.get('cost_holiday_mgmt', 0) +
+            row.get('cost_other_charges', 0) +
+            row.get('cost_tea', 0) +
+            row.get('cost_staff_welfare', 0)
+        )
+        freight_revenue = row.get('revenue_freight', 0) * outbound_rate
+        vendor_revenue = row.get('supervisor_vender', 0) * adhoc_rate
+        return ot_revenue + ot_related + freight_revenue + vendor_revenue
+
+    df['Variable Revenue'] = df.apply(calc_variable_revenue, axis=1)
+
+    # --- Total Revenue ---
+    df['Revenue'] = df['Variable Revenue'] + df.get('revenue_warehouse', 0) * storage_rate
+
+    # --- Total Staff Cost ---
     def calc_labor_cost(row):
         cost = 0
-        # White Collar
-        wc_salary = MASTER_DATA.get('ROLE_RATES', {}).get('White Colar', {}).get('daily_cost', 0)
-        cost += wc_salary
-
-        # Other roles dynamically
-        for role_name, rate_data in MASTER_DATA.get('ROLE_RATES', {}).items():
-            field = 'staff_' + role_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
-            if field in row:
-                cost += row[field] * rate_data.get('daily_cost', 0)
-
-        # Vendor/Adhoc
-        vendor_rate = MASTER_DATA.get('ADHOC_RATES', {}).get('Adhoc Manpower Rate', 0)
-        cost += row.get('supervisor_vender', 0) * vendor_rate
-
-        # Overtime
-        ot_sup_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Over Time -Supervisor/ Hr', 0)
-        ot_bc_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Over Time- Blue Collar/Hr', 0)
-        ot_loader_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Over Time- Blue Collar ( Loader/Hr)', 0)
-        cost += row.get('ot_supervisor_hrs', 0) * ot_sup_rate
-        cost += row.get('ot_blue_collar_hrs', 0) * ot_bc_rate
-        cost += row.get('ot_loader_hrs', 0) * ot_loader_rate
-
+        cost = 8784  # Fixed White Colar
+        # cost += row.get('staff_supervisor', 0) * role_rates_db.get('White Colar', 0)
+        cost += row.get('staff_blue_collar', 0) * role_rates_db.get('Blue Collar (Attendance)', 0)
+        cost += row.get('staff_loader', 0) * role_rates_db.get('Loading & Unloading(Attendance)', 0)
+        cost += row.get('staff_electrician', 0) * role_rates_db.get('Electretion', 0)
+        # cost += row.get('supervisor_vender', 0) * adhoc_rate
         return cost
 
-    df['Total Labor Cost'] = df.apply(calc_labor_cost, axis=1)
+    df['Total Staff Cost'] = df.apply(calc_labor_cost, axis=1)
 
-    # --- 2. FIXED COSTS ---
-    fixed_cost_total = sum(MASTER_DATA.get('FIXED_COSTS', {}).values())
-    df['Total Fixed Cost'] = fixed_cost_total
+    # --- Other Costs ---
+    cost_fields = [c for c in df.columns if c.startswith('cost_')]
+    df['Other Costs'] = df[cost_fields].sum(axis=1)
 
-    # --- 3. TOTAL COST ---
-    df['Total Cost'] = df['Total Labor Cost'] + df['Total Fixed Cost']
+    # --- Consumables ---
+    consumables_list = [
+        'consumable_roll_100x150',
+        'consumable_roll_75x50',
+        'consumable_roll_25x50',
+        'consumable_a4_paper',
+        'consumable_ribbon_25x50'
+    ]
+    for item in consumables_list:
+        rate = MASTER_DATA.get('CONSUMABLE_RATES', {}).get(item, 0)
+        df['Other Costs'] += df.get(item, 0) * rate
 
-    # --- 4. REVENUE ---
-    storage_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Storage/Day/CBM', 0)
-    outbound_rate = MASTER_DATA.get('REVENUE_RATES', {}).get('Outbound/CBM', 0)
-    df['Revenue'] = df.get('revenue_warehouse', 0) * storage_rate + df.get('revenue_freight', 0) * outbound_rate
+    # --- Total Cost ---
+    df['Total Cost'] = df['Total Staff Cost'] + df['Other Costs']
 
-    # --- 5. Gross & Net Profit ---
-    df['Gross Profit'] = df['Revenue'] - df['Total Fixed Cost']
+    # --- Profit Calculations ---
+    df['Gross Profit'] = df['Revenue'] - df['Total Staff Cost']
     df['Net Profit'] = df['Revenue'] - df['Total Cost']
-    df['Net Profit Margin (%)'] = np.where(df['Revenue'] != 0, (df['Net Profit'] / df['Revenue']) * 100, 0)
+    df['Net Profit Margin (%)'] = np.where(df['Revenue'] != 0,
+                                           (df['Net Profit'] / df['Revenue']) * 100, 0)
 
-    # --- 6. Prepare display ---
-    display_cols = ['Date', 'Revenue', 'Total Labor Cost', 'Total Fixed Cost', 'Total Cost',
-                    'Gross Profit', 'Net Profit', 'Net Profit Margin (%)']
+    # --- Display Table ---
+    display_cols = [
+        'Date', 'Variable Revenue', 'Revenue',
+        'Total Staff Cost', 'Total Cost',
+        'Gross Profit', 'Net Profit', 'Net Profit Margin (%)'
+    ]
     df_display = df[display_cols].copy()
+    df_display['Date'] = df_display['Date'].dt.strftime('%Y-%m-%d')
 
-    # Format date safely
-    df_display['Date'] = df_display['Date'].apply(lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else '')
-
-    # Add TOTAL row
-    totals = df_display[['Revenue', 'Total Labor Cost', 'Total Fixed Cost', 'Total Cost', 'Gross Profit', 'Net Profit']].sum()
+    # --- Totals Row ---
+    totals = df_display[['Variable Revenue', 'Revenue', 'Total Staff Cost',
+                         'Total Cost', 'Gross Profit', 'Net Profit']].sum()
     total_margin = (totals['Net Profit'] / totals['Revenue'] * 100) if totals['Revenue'] else 0
+
     total_row = pd.DataFrame([{
         'Date': 'TOTAL',
+        'Variable Revenue': totals['Variable Revenue'],
         'Revenue': totals['Revenue'],
-        'Total Labor Cost': totals['Total Labor Cost'],
-        'Total Fixed Cost': totals['Total Fixed Cost'],
+        'Total Staff Cost': totals['Total Staff Cost'],
         'Total Cost': totals['Total Cost'],
         'Gross Profit': totals['Gross Profit'],
         'Net Profit': totals['Net Profit'],
@@ -433,11 +470,41 @@ def index():
     }])
     df_display = pd.concat([df_display, total_row], ignore_index=True)
 
-    # --- 7. Convert to HTML ---
-    daily_table = df_display.to_html(classes="table table-striped table-hover", index=False,
-                                     float_format=lambda x: f'₹{x:,.0f}' if isinstance(x, (int, float)) else x)
+    # --- Convert Table to HTML ---
+    daily_table = df_display.to_html(
+        classes="table table-striped table-hover align-middle text-center shadow-sm rounded",
+        index=False,
+        float_format=lambda x: f'₹{x:,.2f}' if isinstance(x, (int, float)) else x
+    )
 
-    return render_template('index.html', daily_table=daily_table)
+    # --- Summary Cards ---
+    totals_dict = {
+        'Variable_Revenue': f"₹{totals['Variable Revenue']:,.2f}",
+        'Revenue': f"₹{totals['Revenue']:,.2f}",
+        'Total_Cost': f"₹{totals['Total Cost']:,.2f}",
+        'Gross_Profit': f"₹{totals['Gross Profit']:,.2f}",
+        'Net_Profit': f"₹{totals['Net Profit']:,.2f}",
+        'Net_Margin': f"{total_margin:.2f}%"
+    }
+
+    # --- Quick filter dates ---
+    today = pd.Timestamp.today().strftime('%Y-%m-%d')
+    week_start = (pd.Timestamp.today() - pd.Timedelta(days=pd.Timestamp.today().weekday())).strftime('%Y-%m-%d')
+    month_start = pd.Timestamp.today().replace(day=1).strftime('%Y-%m-%d')
+    year_start = pd.Timestamp.today().replace(month=1, day=1).strftime('%Y-%m-%d')
+
+    return render_template(
+        'index.html',
+        daily_table=daily_table,
+        totals=totals_dict,
+        today=today,
+        week_start=week_start,
+        month_start=month_start,
+        year_start=year_start
+    )
+
+
+
 
 @app.route('/input', methods=['GET', 'POST'])
 def input_data():
