@@ -112,7 +112,14 @@
                 <h4><i class="bi bi-people-fill me-2"></i>Staff Manpower Count</h4>
             </div>
             <div class="card-body row gx-4">
-                {% for field, label in [('staff_supervisor','White Collar Supervisor'),('staff_blue_collar','Blue Collar Staff'),('staff_loader','Loader Staff'),('supervisor_vender','Supervisor (Vendor)'),('staff_adhoc_manpower','Adhoc Manpower')] %}
+                {% for field, label in [
+                    ('staff_supervisor', 'White Collar Supervisor'),
+                    ('staff_blue_collar', 'Blue Collar Staff'),
+                    ('staff_loader', 'Loader Staff'),
+                    ('staff_electrician', 'Electrician'),
+                    ('supervisor_vender', 'Supervisor (Vendor)'),
+                    ('staff_adhoc_manpower', 'Adhoc Ma=npower')
+                ] %}
                 <div class="col-md-3 mb-4">
                     <label for="{{ field }}" class="form-label fw-semibold">{{ label }}
                         <span class="badge bg-success badge-unit">Count</span>
@@ -121,39 +128,63 @@
                 </div>
                 {% endfor %}
             </div>
+
         </div>
 
+        <!-- 🔶 Overtime (OT) Hours -->
         <div class="card mb-5 border-0">
             <div class="card-header text-warning">
                 <h4><i class="bi bi-clock-history me-2"></i>Overtime (OT) Hours</h4>
             </div>
             <div class="card-body row gx-4">
-                {% for field, label in [('ot_supervisor_hrs','Supervisor OT Hours'),('ot_blue_collar_hrs','Blue Collar OT Hours'),('ot_loader_hrs','Loader OT Hours')] %}
+                {% for field, label in [
+                    ('ot_supervisor_hrs','Supervisor OT Hours'),
+                    ('ot_blue_collar_hrs','Blue Collar OT Hours'),
+                    ('ot_loader_hrs','Loader OT Hours'),
+                    ('cost_sunday_sup','Sunday Supervisor Cost'),
+                    ('cost_sunday_bc','Sunday Blue Collar Cost'),
+                    ('cost_holiday_mgmt','Holiday Management Cost'),
+                    ('cost_other_charges','Other OT Related Charges')
+                ] %}
                 <div class="col-md-4 mb-4">
                     <label for="{{ field }}" class="form-label fw-semibold">{{ label }}
-                        <span class="badge bg-warning text-dark badge-unit">Hours</span>
+                        {% if 'ot_' in field %}
+                            <span class="badge bg-warning text-dark badge-unit">Hours</span>
+                        {% else %}
+                            <span class="badge bg-danger badge-unit">₹</span>
+                        {% endif %}
                     </label>
-                    <input type="number" step="0.01" id="{{ field }}" name="{{ field }}" class="form-control" placeholder="Hours" value="{{ form_data[field] or 0 }}">
+                    <input type="number" step="0.01" id="{{ field }}" name="{{ field }}" class="form-control"
+                           placeholder="{% if 'ot_' in field %}Hours{% else %}Enter in ₹{% endif %}"
+                           value="{{ form_data[field] or 0 }}">
                 </div>
                 {% endfor %}
             </div>
         </div>
 
+        <!-- 🔴 Operational Costs (Fixed & Variable Daily) -->
         <div class="card mb-5 border-0">
             <div class="card-header text-danger">
                 <h4><i class="bi bi-cash-stack me-2"></i>Operational Costs (Fixed & Variable Daily)</h4>
             </div>
             <div class="card-body row gx-4">
-                {% for cost_field in ['cost_sunday_sup','cost_sunday_bc','cost_holiday_mgmt','cost_other_charges','cost_security_guard','cost_security_female','cost_security_supervisor','cost_house_keeping','cost_hk_materials','cost_electricity','cost_electricity_sub','cost_water','cost_diesel','cost_rental','cost_staff_welfare','cost_ho','cost_r_and_r','cost_traveling','cost_convence','cost_hra','cost_capex','cost_stationery','cost_tea','cost_other_expenses'] %}
+                {% for cost_field in [
+                    'cost_security_guard','cost_security_female','cost_security_supervisor','cost_house_keeping',
+                    'cost_hk_materials','cost_electricity','cost_electricity_sub','cost_water','cost_diesel',
+                    'cost_rental','cost_staff_welfare','cost_ho','cost_r_and_r','cost_traveling','cost_convence',
+                    'cost_hra','cost_capex','cost_stationery','cost_tea','cost_other_expenses'
+                ] %}
                 <div class="col-md-3 col-sm-6 mb-4">
                     <label for="{{ cost_field }}" class="form-label fw-semibold">{{ cost_field.replace('_',' ').title() }}
                         <span class="badge bg-danger badge-unit">₹</span>
                     </label>
-                    <input type="number" step="0.01" id="{{ cost_field }}" name="{{ cost_field }}" class="form-control" placeholder="Enter in ₹" value="{{ form_data[cost_field] or 0 }}">
+                    <input type="number" step="0.01" id="{{ cost_field }}" name="{{ cost_field }}" class="form-control"
+                           placeholder="Enter in ₹" value="{{ form_data[cost_field] or 0 }}">
                 </div>
                 {% endfor %}
             </div>
         </div>
+
 
         <div class="card mb-5 border-0">
             <div class="card-header text-secondary">

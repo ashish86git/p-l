@@ -1,223 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily P&L Dashboard | Red Theme</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <style>
-    /* Base Theme: Deep Red for Focus */
-    :root {
-        --bs-primary-red: #dc3545; /* Bootstrap Danger color */
-        --bs-dark-red: #c82333;
-        --bs-light-bg: #fdf5f5; /* Very subtle reddish background */
-        --bs-secondary-bg: #fff0f0;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily P&L Dashboard | Red Theme</title>
 
-    body {
-        background-color: var(--bs-light-bg);
-        font-family: 'Inter', sans-serif; /* Use a clean modern font */
-    }
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
-    /* Global Styles */
-    h2 {
-        color: var(--bs-dark-red);
-        font-weight: 800; /* Extra bold */
-        letter-spacing: -0.5px;
-    }
+    <style>
+        :root {
+            --primary-red: #dc3545;
+            --dark-red: #c82333;
+            --light-bg: #fdf5f5;
+            --secondary-bg: #fff0f0;
+        }
 
-    /* Filter and Header Card Styling */
-    .card-filter-header {
-        background-color: var(--bs-dark-red);
-        color: white;
-        font-weight: bold;
-        border-bottom: 0;
-        border-radius: 0.75rem 0.75rem 0 0 !important;
-    }
-    .card-filter {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1); /* Stronger shadow */
-    }
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Inter', sans-serif;
+        }
 
-    /* Summary Card Styling */
-    .summary-card-group .summary-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08); /* Light shadow for 3D effect */
-    }
-    .summary-card-group .summary-card:hover {
-        transform: translateY(-5px); /* More pronounced lift on hover */
-        box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.15) !important;
-    }
+        /* Header */
+        .header {
+            background-color: var(--dark-red);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+        .header .btn-group .btn {
+            margin-left: 8px;
+        }
 
+        /* Filter Section */
+        .filter-section {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 25px;
+        }
 
-    /* ... (Your existing styles) ... */
+        /* Summary Cards */
+        .summary-card {
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 20px;
+            color: white;
+        }
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.8rem 2rem rgba(0,0,0,0.15);
+        }
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .card-revenue { background-color: #c82333; border-left: 6px solid #dc3545; }
+        .card-gross { background-color: #28a745; border-left: 6px solid #218838; }
+        .card-net { background-color: #ffc107; border-left: 6px solid #e0a800; color: #212529; }
+        .card-margin { background-color: #17a2b8; border-left: 6px solid #138496; }
 
-    /* Custom CSS for Alignment and Visual Appeal */
-    .table thead th {
-        background-color: var(--bs-dark-red);
-        color: white;
-        border-color: var(--bs-dark-red);
-        /* Ensure headers align with the data below */
-        text-align: right;
-        vertical-align: middle;
-        padding: 0.75rem 1rem;
-    }
+        /* Table */
+        .table-container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
+        }
+        .table thead th {
+            background-color: var(--dark-red);
+            color: white;
+            text-align: right;
+            vertical-align: middle;
+        }
+        .table tbody td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+        .table tbody tr:hover {
+            background-color: var(--secondary-bg);
+        }
+        .profit-positive { color: #28a745; font-weight: 700; }
+        .profit-negative { color: var(--primary-red); font-weight: 700; }
 
-    /* Center align the TOTAL row for better visual punch */
-    tr.total-row td {
-        text-align: right !important; /* Financial data aligned right */
-        vertical-align: middle;
-        font-size: 1.15rem; /* Make total values stand out */
-    }
+        /* Footer */
+        footer {
+            padding: 15px;
+            background-color: var(--dark-red);
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+        }
 
-    /* Style for the Date Column (Left align) */
-    .table tbody td:first-child {
-        text-align: left !important;
-        font-weight: 600;
-        min-width: 100px; /* Ensure date column is wide enough */
-    }
-
-    /* Highlight Profit/Loss */
-    .profit-positive { color: #28a745 !important; font-weight: 700; } /* Green */
-    .profit-negative { color: #dc3545 !important; font-weight: 700; } /* Red (danger) */
-
-    /* General data cell alignment for financial columns */
-    .data-financial {
-        text-align: right !important;
-        font-family: monospace; /* Optional: Use a fixed-width font for money */
-    }
-
-
-
-    /* Border Colors */
-    .border-primary-red { border-left: 5px solid var(--bs-primary-red) !important; }
-    .border-success-profit { border-left: 5px solid #28a745 !important; } /* Green for Gross Profit */
-    .border-warning-net { border-left: 5px solid #ffc107 !important; } /* Yellow/Amber for Net Profit */
-    .border-info-margin { border-left: 5px solid #17a2b8 !important; } /* Cyan for Margin */
-
-
-    /* Table Styling */
-    .table thead th {
-        background-color: var(--bs-dark-red);
-        color: white;
-        border-color: var(--bs-dark-red);
-    }
-    .table tbody tr:hover { background-color: var(--bs-secondary-bg); }
-
-    /* Total Row Styling */
-    tr.total-row {
-        font-weight: bold;
-        background-color: #f8d7da; /* Light red/pink alert background */
-        border-top: 3px solid var(--bs-dark-red);
-        color: var(--bs-dark-red);
-        font-size: 1.1rem;
-    }
-
-    /* Button Colors */
-    .btn-primary { background-color: var(--bs-primary-red); border-color: var(--bs-primary-red); }
-    .btn-primary:hover { background-color: var(--bs-dark-red); border-color: var(--bs-dark-red); }
-    .btn-outline-secondary, .btn-outline-success { transition: all 0.2s; }
-  </style>
+        /* Buttons */
+        .btn-primary {
+            background-color: var(--primary-red);
+            border-color: var(--primary-red);
+        }
+        .btn-primary:hover {
+            background-color: var(--dark-red);
+            border-color: var(--dark-red);
+        }
+    </style>
 </head>
 <body>
-  <div class="container mt-5">
-    <h2 class="mb-5 text-center"><i class="bi bi-fire me-2"></i>Warehouse Daily P&L Performance</h2>
 
-    <div class="card shadow mb-4 card-filter">
-      <div class="card-header card-filter-header"><i class="bi bi-sliders me-2"></i>Filter & Quick Date Selection</div>
-      <div class="card-body">
-        <form method="get" action="{{ url_for('index') }}" class="row g-3 align-items-end">
-          <div class="col-md-3">
-            <label for="start_date" class="form-label">Start Date</label>
-            <input type="date" class="form-control" name="start_date" id="start_date" value="{{ request.args.get('start_date','') }}">
-          </div>
-          <div class="col-md-3">
-            <label for="end_date" class="form-label">End Date</label>
-            <input type="date" class="form-control" name="end_date" id="end_date" value="{{ request.args.get('end_date','') }}">
-          </div>
-          <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">
-              <i class="bi bi-funnel"></i> Apply Filter
-            </button>
-          </div>
-          <div class="col-md-4 d-flex justify-content-end align-items-center">
-            <a href="{{ url_for('master_data') }}" class="btn btn-outline-secondary me-2">
-              <i class="bi bi-gear-fill"></i> Master/Rates
-            </a>
-            <a href="{{ url_for('input_data') }}" class="btn btn-outline-success">
-              <i class="bi bi-pencil-square"></i> Input Daily Data
-            </a>
-          </div>
-        </form>
+<div class="container mt-4">
 
-        <div class="mt-3 quick-filters border-top pt-3">
-          <span class="text-muted me-2 fw-bold">Quick Select:</span>
-          <a href="{{ url_for('index', start_date=today, end_date=today) }}" class="btn btn-sm btn-outline-danger">Today</a>
-          <a href="{{ url_for('index', start_date=week_start, end_date=today) }}" class="btn btn-sm btn-outline-danger">This Week</a>
-          <a href="{{ url_for('index', start_date=month_start, end_date=today) }}" class="btn btn-sm btn-outline-danger">This Month</a>
-          <a href="{{ url_for('index', start_date=year_start, end_date=today) }}" class="btn btn-sm btn-outline-danger">This Year</a>
+    <!-- Header with Buttons -->
+    <div class="header">
+        <h1><i class="bi bi-bar-chart-fill me-2"></i>Warehouse Daily P&L</h1>
+        <div class="btn-group">
+            <a href="{{ url_for('master_data') }}" class="btn btn-light btn-sm">
+                <i class="bi bi-gear-fill"></i> Master/Rates
+            </a>
+            <a href="{{ url_for('input_data') }}" class="btn btn-light btn-sm">
+                <i class="bi bi-pencil-square"></i> Input Data
+            </a>
         </div>
-      </div>
     </div>
 
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <form method="get" action="/" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label fw-semibold">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date"
+                       value="{{ request.args.get('start_date','') }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label fw-semibold">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date"
+                       value="{{ request.args.get('end_date','') }}">
+            </div>
+            <div class="col-md-6 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-funnel-fill me-1"></i> Apply Filter</button>
+                <a href="/?show_all=1" class="btn btn-outline-secondary px-4"><i class="bi bi-eye-fill me-1"></i> Show All</a>
+                <a href="/" class="btn btn-danger px-4"><i class="bi bi-x-circle-fill me-1"></i> Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Cards -->
     {% if totals %}
-    <div class="row g-4 mb-5 summary-card-group">
-
-      <div class="col-md-3">
-        <div class="card summary-card border-primary-red h-100 shadow">
-          <div class="card-body">
-            <h6 class="text-danger text-uppercase fw-bold mb-2"><i class="bi bi-graph-up-arrow me-1"></i> Total Revenue</h6>
-            <div class="display-6 fw-bold">₹{{ totals.Revenue | format_currency }}</div>
-          </div>
+    <div class="row g-4 mb-4">
+        <div class="col-md-4 col-lg-2">
+            <div class="summary-card card-revenue text-center">
+                <div class="small">Variable Revenue</div>
+                <div class="summary-value">{{ totals.Variable_Revenue }}</div>
+            </div>
         </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card summary-card border-success-profit h-100 shadow">
-          <div class="card-body">
-            <h6 class="text-success text-uppercase fw-bold mb-2"><i class="bi bi-check-circle-fill me-1"></i> Gross Profit</h6>
-            <div class="display-6 fw-bold">₹{{ totals.Gross_Profit | format_currency }}</div>
-          </div>
+        <div class="col-md-4 col-lg-2">
+            <div class="summary-card card-revenue text-center">
+                <div class="small">Total Revenue</div>
+                <div class="summary-value">{{ totals.Revenue }}</div>
+            </div>
         </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card summary-card border-warning-net h-100 shadow">
-          <div class="card-body">
-            <h6 class="text-warning text-uppercase fw-bold mb-2"><i class="bi bi-cash-stack me-1"></i> Net Profit</h6>
-            <div class="display-6 fw-bold">₹{{ totals.Net_Profit | format_currency }}</div>
-          </div>
+        <div class="col-md-4 col-lg-2">
+            <div class="summary-card card-net text-center">
+                <div class="small">Total Cost</div>
+                <div class="summary-value">{{ totals.Total_Cost }}</div>
+            </div>
         </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card summary-card border-info-margin h-100 shadow">
-          <div class="card-body">
-            <h6 class="text-info text-uppercase fw-bold mb-2"><i class="bi bi-percent me-1"></i> Net Margin</h6>
-            <div class="display-6 fw-bold">{{ totals.Net_Margin | format_percent }}</div>
-          </div>
+        <div class="col-md-4 col-lg-2">
+            <div class="summary-card card-gross text-center">
+                <div class="small">Gross Profit</div>
+                <div class="summary-value">{{ totals.Gross_Profit }}</div>
+            </div>
         </div>
-      </div>
-
+        <div class="col-md-4 col-lg-2">
+            <div class="summary-card card-net text-center">
+                <div class="small">Net Profit</div>
+                <div class="summary-value">{{ totals.Net_Profit }}</div>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg-2">
+            <div class="summary-card card-margin text-center">
+                <div class="small">Net Margin</div>
+                <div class="summary-value">{{ totals.Net_Margin }}</div>
+            </div>
+        </div>
     </div>
     {% endif %}
 
-    <h4 class="mb-3 text-secondary border-bottom pb-2"><i class="bi bi-list-columns-reverse me-2"></i>Detailed Daily Breakdown</h4>
-    <div class="table-responsive shadow">
-      {% if daily_table %}
+    <!-- Table -->
+    <div class="table-container">
         {{ daily_table|safe }}
-      {% else %}
-        <div class="alert alert-warning text-center mt-3">
-          No P&L data available for the selected period. Please adjust the dates.
-        </div>
-      {% endif %}
     </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</div>
+
+<footer>
+    © {{ current_year or 2025 }} Warehouse P&L | Designed for Professional Insights
+</footer>
+
 </body>
 </html>
