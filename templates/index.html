@@ -9,6 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
+    <!-- SheetJS for Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         :root {
             --primary-red: #dc3545;
@@ -80,6 +83,7 @@
             padding: 20px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             margin-bottom: 40px;
+            overflow-x: auto;
         }
         .table thead th {
             background-color: var(--dark-red);
@@ -114,6 +118,11 @@
         .btn-primary:hover {
             background-color: var(--dark-red);
             border-color: var(--dark-red);
+        }
+
+        /* Export Buttons */
+        .export-btn {
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -197,9 +206,22 @@
     </div>
     {% endif %}
 
-    <!-- Table -->
+    <!-- Main Table -->
     <div class="table-container">
+        <button class="btn btn-sm btn-outline-primary export-btn" onclick="exportTableToExcel('daily_table', 'Daily_PL')">
+            <i class="bi bi-file-earmark-excel-fill"></i> Export Main Table
+        </button>
         {{ daily_table|safe }}
+    </div>
+
+    <!-- Detailed Table -->
+    <hr class="my-4">
+    <h5 class="text-primary text-center mb-3">Detailed Cost–Revenue Summary</h5>
+    <div class="table-responsive">
+        <button class="btn btn-sm btn-outline-success export-btn" onclick="exportTableToExcel('detailed_table', 'Detailed_PL')">
+            <i class="bi bi-file-earmark-excel-fill"></i> Export Detailed Table
+        </button>
+        {{ detailed_table|safe }}
     </div>
 
 </div>
@@ -208,5 +230,18 @@
     © {{ current_year or 2025 }} Warehouse P&L | Designed for Professional Insights
 </footer>
 
+<script>
+function exportTable(tableId, filename='table_data'){
+    const table = document.getElementById(tableId);
+    if(!table){ alert('Table not found!'); return; }
+    const blob = new Blob([table.outerHTML], {type:'application/vnd.ms-excel'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename+'.xls';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+</script>
 </body>
 </html>

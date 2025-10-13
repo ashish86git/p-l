@@ -111,25 +111,39 @@
             <div class="card-header text-success">
                 <h4><i class="bi bi-people-fill me-2"></i>Staff Manpower Count</h4>
             </div>
+
             <div class="card-body row gx-4">
                 {% for field, label in [
                     ('staff_supervisor', 'White Collar Supervisor'),
                     ('staff_blue_collar', 'Blue Collar Staff'),
                     ('staff_loader', 'Loader Staff'),
                     ('staff_electrician', 'Electrician'),
-                    ('supervisor_vender', 'Supervisor (Vendor)'),
-                    ('staff_adhoc_manpower', 'Adhoc Ma=npower')
+                    ('supervisor_vender', 'Supervisor (Team Lead)'),
+                    ('staff_adhoc_manpower', 'Adhoc Mannpower'),
                 ] %}
                 <div class="col-md-3 mb-4">
-                    <label for="{{ field }}" class="form-label fw-semibold">{{ label }}
-                        <span class="badge bg-success badge-unit">Count</span>
-                    </label>
-                    <input type="number" id="{{ field }}" name="{{ field }}" class="form-control" placeholder="No. of people" value="{{ form_data[field] or 0 }}">
+                    <label for="{{ field }}" class="form-label fw-semibold">{{ label }}</label>
+
+                    {% if field == 'supervisor_vender' %}
+                        <!-- ₹ symbol for Supervisor (Team Lead) -->
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" class="form-control" id="{{ field }}" name="{{ field }}"
+                                   value="{{ request.form.get(field, '') }}">
+                        </div>
+                    {% else %}
+                        <!-- Count input for all other fields -->
+                        <div class="input-group">
+                            <input type="number" step="1" class="form-control" id="{{ field }}" name="{{ field }}"
+                                   value="{{ request.form.get(field, '') }}">
+                            <span class="input-group-text">Count</span>
+                        </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
-
         </div>
+
 
         <!-- 🔶 Overtime (OT) Hours -->
         <div class="card mb-5 border-0">
